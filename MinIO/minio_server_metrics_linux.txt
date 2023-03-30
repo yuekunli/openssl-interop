@@ -1,0 +1,73 @@
+minio aduit failed messages
+minio audit target queue length
+minio audit total messages
+minio bucket objects size distribution
+minio bucket replication received bytes
+minio bucket traffic received bytes
+minio bucket traffic sent bytes
+minio bucket usage object total
+minio bucket usage total bytes
+minio cluster capacity raw free bytes
+minio cluster capacity raw total bytes
+minio cluster capacity usable free bytes;
+minio cluster capacity usable total bytes
+minio cluster disk free inodes
+minio cluster disk offline total
+minio cluster disk online total
+minio cluster disk total
+minio cluster nodes offline total
+minio cluster nodes online total
+minio heal objects heal total
+minio heal objects total
+minio heal time last activity nano seconds
+minio node disk free bytes
+minio node disk total bytes
+minio node disk used bytes
+minio node file descriptor limit total   -
+minio node file descriptor open total   -
+minio node go routine total
+minio node iam last sync duration millis
+minio node iam since last sync millis
+minio node iam sync failures
+minio node iam sync successes
+minio node ilm expiry pending tasks
+minio node ilm transition active tasks
+minio node ilm transition pending tasks
+minio node ilm versions scanned
+minio node io rchar bytes   -
+minio node io read bytes   -
+minio node io wchar bytes   -
+minio node io write bytes   -
+minio node process cpu total seconds   -
+minio node process resident memory bytes   -
+minio node process starttime seconds   -
+minio node process uptime seconds   -
+minio node scanner bucket scans finished
+minio node scanner bucket scans started
+minio node scanner directories scanned
+minio node scanner objects scanned
+minio node scanner versions scanned
+minio node syscall read total   -
+minio node syscall write total   -
+minio notify current send in progress
+minio s3 requests 4xx errors total
+minio s3 requests errors total
+minio s3 requests incoming total
+minio s3 requests inflight total
+minio s3 requests rejected auth total
+minio s3 requests rejected header total
+minio s3 requests rejected invalid total
+minio s3 requests rejected timestamp total
+minio s3 requests total
+minio s3 requests waiting total
+minio s3 time ttfb seconds distribution
+minio s3 traffic received bytes
+minio s3 traffic sent bytes
+minio software commit info
+minio software version info
+minio usage last activity nano seconds
+scrape duration seconds
+scrape samples post metric relabeling
+scrape samples scraped
+scrape series added
+uptime

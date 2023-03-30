@@ -1,0 +1,74 @@
+{
+    "Version":"2012-10-17",
+    "Statement":
+    [
+        {
+            "Effect":"Allow",
+            "Principal":
+            {
+                "AWS":["*"]
+            },
+            "Action":["s3:GetBucketLocation"],
+            "Resource":["arn:aws:s3:::bucket1"]
+        },
+        {
+            "Effect":"Allow",
+            "Principal":
+            {
+                "AWS":["*"]
+            },
+            "Action":["s3:ListBucket"],
+            "Resource":["arn:aws:s3:::bucket1"],
+            "Condition":
+            {
+                "StringEquals":
+                {
+                    "s3:prefix":["text_file_1.txt"]
+                }
+            }
+        },
+        {
+            "Effect":"Allow",
+            "Principal":
+            {
+                "AWS":["*"]
+            },
+            "Action":["s3:GetObject"],
+            "Resource":["arn:aws:s3:::bucket1/text_file_1.txt*"]
+        }
+    ]
+}
+
+
+
+
+"{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"AWS\":[\"*\"]},\"Action\":[\"s3:GetBucketLocation\"],\"Resource\":[\"arn:aws:s3:::bucket1\"]},{\"Effect\":\"Allow\",\"Principal\":{\"AWS\":[\"*\"]},\"Action\":[\"s3:ListBucket\"],\"Resource\":[\"arn:aws:s3:::bucket1\"],\"Condition\":{\"StringEquals\":{\"s3:prefix\":[\"text_file_1.txt\"]}}},{\"Effect\":\"Allow\",\"Principal\":{\"AWS\":[\"*\"]},\"Action\":[\"s3:GetObject\"],\"Resource\":[\"arn:aws:s3:::bucket1/text_file_1.txt*\"]}]}"
+
+
+"{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"AWS\":[\"*\"]},\"Action\":[\"s3:GetBucketLocation\"],\"Resource\":[\"arn:aws:s3:::bucket1\"]},{\"Effect\":\"Allow\",\"Principal\":{\"AWS\":[\"*\"]},\"Action\":[\"s3:ListBucket\"],\"Resource\":[\"arn:aws:s3:::bucket1\"],\"Condition\":{\"StringEquals\":{\"s3:prefix\":[\"text_file_1.txt\"]}}},{\"Effect\":\"Allow\",\"Principal\":{\"AWS\":[\"*\"]},\"Action\":[\"s3:GetObject\"],\"Resource\":[\"arn:aws:s3:::bucket1/text_file_1.txt*\"]}]}"
+
+
+
+"{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"AWS\":[\"*\"]},\"Action\":[\"s3:GetBucketLocation\"],\"Resource\":[\"arn:aws:s3:::bucket1\"]},{\"Effect\":\"Allow\",\"Principal\":{\"AWS\":[\"*\"]},\"Action\":[\"s3:ListBucket\"],\"Resource\":[\"arn:aws:s3:::bucket1\"],\"Condition\":{\"StringEquals\":{\"s3:prefix\":[\"text_file_1.txt\"]}}},{\"Effect\":\"Allow\",\"Principal\":{\"AWS\":[\"*\"]},\"Action\":[\"s3:GetObject\"],\"Resource\":[\"arn:aws:s3:::bucket1/text_file_1.txt*\"]}]}"
+
+
+"HTTP/1.1 200 OK\r\n
+Accept-Ranges: bytes\r\n
+Content-Length: 448\r\n
+Content-Security-Policy: block-all-mixed-content\r\n
+Content-Type: application/json\r\n
+Server: MinIO\r\n
+Strict-Transport-Security: max-age=31536000; includeSubDomains\r\n
+Vary: Origin\r\n
+Vary: Accept-Encoding\r\n
+X-Amz-Request-Id: 172C2E4A24E73CF2\r\n
+X-Content-Type-Options: nosniff\r\n
+X-Xss-Protection: 1; mode=block\r\n
+Date: Tue, 29 Nov 2022 22:20:57 GMT\r\n
+\r\n
+{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"AWS\":[\"*\"]},\"Action\":[\"s3:GetBucketLocation\""
+
+
+
+
+{\"Version\":\"2012-10-17\",\"Statement\":[{\"Action\":[\"s3:GetBucketLocation\"],\"Effect\":\"Allow\",\"Principal\":{\"AWS\":[\"*\"]},\"Resource\":[\"arn:aws:s3:::bucket1\"],\"Sid\":\"\"},{\"Action\":[\"s3:ListBucket\"],\"Condition\":{\"StringEquals\":{\"s3:prefix\":[\"text_file_1.txt\"]}},\"Effect\":\"Allow\",\"Principal\":{\"AWS\":[\"*\"]},\"Resource\":[\"arn:aws:s3:::bucket1\"],\"Sid\":\"\"},{\"Action\":[\"s3:GetObject\"],\"Effect\":\"Allow\",\"Principal\":{\"AWS\":[\"*\"]},\"Resource\":[\"arn:aws:s3:::bucket1/text_file_1.txt*\"],\"Sid\":\"\"}]}

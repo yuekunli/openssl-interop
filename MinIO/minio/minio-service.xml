@@ -1,0 +1,17 @@
+<service>
+  <id>MinIO</id>
+  <name>MinIO</name>
+  <description>MinIO Server Running on Adalap158 Windows 10</description>
+  <executable>minio.exe</executable>
+  <env name="MINIO_ROOT_USER" value="minio-admin-user"/>
+  <env name="MINIO_ROOT_PASSWORD" value="miniodeploy"/>
+  <env name="MINIO_VOLUMES" value="C:\ws\miniodata" />
+  <env name="MINIO_OPTS" value="-C C:\Users\YuekunLi --address 127.0.0.1:9000  --console-address 127.0.0.1:9001" />
+  <env name="MINIO_PROMETHEUS_AUTH_TYPE" value="public" />
+  <env name="MINIO_PROMETHEUS_URL" value="http://127.0.0.1:9090" />
+  <env name="MINIO_PROMETHEUS_JOB_ID" value="minio-job" />
+  <env name="CONSOLE_PROMETHEUS_URL" value="http://127.0.0.1:9090" />
+  <env name="CONSOLE_PROMETHEUS_JOB_ID" value="minio-job" />
+  <arguments>server %MINIO_OPTS% %MINIO_VOLUMES%</arguments>
+  <logmode>rotate</logmode>
+</service>
