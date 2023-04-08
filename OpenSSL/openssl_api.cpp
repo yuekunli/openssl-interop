@@ -62,11 +62,10 @@ namespace ADAPTIVA_OPENSSL {
 
 
 #define com_adaptiva_fips_CryptoConstants_IV_LENGTH_AES256_CBC 16
-#define com_adaptiva_fips_CryptoConstants_IV_LENGTH_AES256_EAX 0   // Java code has this macro as 256, which seems wrong. OpenSSL doesn't support EAX
-#define com_adaptiva_fips_CryptoConstants_IV_LENGTH_AES256_GCM 12  // Java code has this macro as 256, which seems wrong
+#define com_adaptiva_fips_CryptoConstants_IV_LENGTH_AES256_EAX 0   // Java code has this macro as 256, OpenSSL has no EAX implementation
+#define com_adaptiva_fips_CryptoConstants_IV_LENGTH_AES256_GCM 128 /*256*/ // OpenSSL can support up to 128 bytes IV, Crypto++ can support up to 2^64 - 1
 #define com_adaptiva_fips_CryptoConstants_IV_LENGTH_TRIPLE_DES_CBC 8
 
-// OpenSSL has AES key length as 32 bytes. Crypto++ has default AES key length as 16 bytes. But why???
 
 #define com_adaptiva_fips_CryptoConstants_KEY_TYPE_NONE 75 // Set this to a non-zero value, so that debugger can show encrypted buffer.
 
@@ -586,7 +585,7 @@ byte *getSecureHash(int hashingAlgorithm, byte *pDataBuffer, int nDataBufferLeng
 
 
 // =====================================
-// Symmetric Encryption (AES) or DES3
+// Symmetric Encryption AES or DES3
 // =====================================
 
 
@@ -601,19 +600,18 @@ struct SymmetricCipher_t
     byte *pInitialVector;
     int nInitialVectorLength;
 
+    int nBlockSize;
+
+    EVP_CIPHER* pImplement;
+    EVP_CIPHER_CTX* pCtx;
+
     int nBytesToBeSkipped;
     int nBytesToBeInjected;
     byte *pBytesToBeInjected;
 
-    int nBlockSize;
-
-    EVP_CIPHER *pImplement;
-    EVP_CIPHER_CTX *pCtx;
-
     BIO *pBIOInput;
     unsigned char *psInput;
     int nInputSize;
-
 };
 typedef struct SymmetricCipher_t SymmetricCipher;
 typedef struct SymmetricCipher_t Cipher;
@@ -668,7 +666,7 @@ SymmetricCipher *CipherInitialize(int nAlgo, bool fEncrypt)
 
     //char const *pCipherName[] = {"AEC-256-CBC", "AES-256-GCM", "DES-EDE3-CBC"};
 
-    char const* pCipherName[] = { "AES-128-CBC", "AES-128-GCM", "DES-EDE3-CBC" };
+    char const* pCipherName[] = { "AES-128-CBC", "UNDEFINED-AES-EAX", "AES-128-GCM", "DES-EDE3-CBC" };
 
     char const *pChosen = pCipherName[0];
 
@@ -683,12 +681,12 @@ SymmetricCipher *CipherInitialize(int nAlgo, bool fEncrypt)
             break;
 
             case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_AES256_GCM:
-            pChosen = pCipherName[1];
+            pChosen = pCipherName[2];
             pSymCipher->nBlockSize = com_adaptiva_fips_CryptoConstants_BLOCK_SIZE_AES256_GCM;
             break;
 
             case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_TRIPLE_DES_CBC:
-            pChosen = pCipherName[2];
+            pChosen = pCipherName[3];
             pSymCipher->nBlockSize = com_adaptiva_fips_CryptoConstants_BLOCK_SIZE_TRIPLE_DES_CBC;
             break;
         }
@@ -717,44 +715,60 @@ bool CipherSetKeyAndInitialVector(SymmetricCipher *pSymCipher, byte *pKey, int n
         switch (pSymCipher->nAlgorithm)
         {
             case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_AES256_CBC:
-            // key length = 32 bytes, IV length = 16 bytes
+                EVP_EncryptInit_ex2(pSymCipher->pCtx, pSymCipher->pImplement, pKey, pIV, NULL);
             break;
 
             case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_AES256_EAX:
             break;
 
             case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_AES256_GCM:
-            // key length = 32 bytes, IV length = 12 bytes
-            ivlen = com_adaptiva_fips_CryptoConstants_IV_LENGTH_AES256_GCM;
-            params[0] = OSSL_PARAM_construct_size_t(OSSL_CIPHER_PARAM_IVLEN, &ivlen);
+                
+                ivlen = com_adaptiva_fips_CryptoConstants_IV_LENGTH_AES256_GCM;
+                if (ivlen == 12)
+                {
+                    EVP_EncryptInit_ex2(pSymCipher->pCtx, pSymCipher->pImplement, pKey, pIV, NULL);
+                }
+                else
+                {
+                    EVP_EncryptInit_ex2(pSymCipher->pCtx, pSymCipher->pImplement, pKey, NULL /*pIV*/, NULL);
+                    EVP_CIPHER_CTX_ctrl(pSymCipher->pCtx, EVP_CTRL_AEAD_SET_IVLEN, ivlen, NULL);
+                    EVP_EncryptInit_ex(pSymCipher->pCtx, NULL, NULL, NULL, pIV);
+                }
             break;
 
             case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_TRIPLE_DES_CBC:
-            // key length = 24 bytes, IV length 8 bytes
             break;
         }
-
-        EVP_EncryptInit_ex2(pSymCipher->pCtx, pSymCipher->pImplement, pKey, pIV, params);
     }
     else
     {
         switch (pSymCipher->nAlgorithm)
         {
             case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_AES256_CBC:
+                EVP_DecryptInit_ex2(pSymCipher->pCtx, pSymCipher->pImplement, pKey, pIV, NULL);
             break;
 
             case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_AES256_EAX:
             break;
             
             case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_AES256_GCM:
-            ivlen = com_adaptiva_fips_CryptoConstants_IV_LENGTH_AES256_GCM;
-            params[0] = OSSL_PARAM_construct_size_t(OSSL_CIPHER_PARAM_IVLEN, &ivlen);
+
+                ivlen = com_adaptiva_fips_CryptoConstants_IV_LENGTH_AES256_GCM;
+                if (ivlen == 12)
+                {
+                    EVP_DecryptInit_ex2(pSymCipher->pCtx, pSymCipher->pImplement, pKey, pIV, NULL);
+                }
+                else
+                {
+                    params[0] = OSSL_PARAM_construct_size_t(OSSL_CIPHER_PARAM_IVLEN, &ivlen);
+                    EVP_DecryptInit_ex2(pSymCipher->pCtx, pSymCipher->pImplement, pKey, NULL, params);
+                    EVP_DecryptInit_ex(pSymCipher->pCtx, NULL, NULL, NULL, pIV);
+                }
             break;
             
             case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_TRIPLE_DES_CBC:
             break;
         }
-        EVP_DecryptInit_ex2(pSymCipher->pCtx, pSymCipher->pImplement, pKey, pIV, params);
     }
     return true;
 }
@@ -783,7 +797,7 @@ bool CipherRelease(SymmetricCipher *pSymCipher)
 
         if (pSymCipher->pBIOInput != NULL)
         {
-            BIO_set_flags(pSymCipher->pBIOInput, BIO_FLAGS_MEM_RDONLY);
+            BIO_set_flags(pSymCipher->pBIOInput, BIO_FLAGS_MEM_RDONLY); // very necessary
             BIO_free(pSymCipher->pBIOInput);
         }
         OPENSSL_free(pSymCipher);
@@ -832,7 +846,52 @@ bool CipherEndInput(SymmetricCipher* pSymCipher)
     return true;
 }
 
-static int CipherRetrieveEncryptionOutput(SymmetricCipher* pSymCipher, byte* pOutput, int nOffset, int nLength)
+/*
+*                             nLength
+*      |------------------------------------------------------|
+*      |  injection  |        cipher             |    tag     |
+* 
+*  It doesn't make sense to skip part of the cipher. Injection doesn't affect the verification of the tag
+*  as long as the receiver knows the length of the injection. We don't include length of the injection in
+*  the output, the caller has to communicate that information to the receiver.
+*/
+static int CipherRetrieveEncryptionOutput_AES_GCM(SymmetricCipher* pSymCipher, byte* pOutput, int nOffset, int nLength)
+{
+    byte* pAlgorithmOutput;
+    int len = 0;
+    byte tag[16];
+    OSSL_PARAM params[2] = { OSSL_PARAM_END, OSSL_PARAM_END };
+
+    if (nLength < pSymCipher->nBytesToBeInjected + pSymCipher->nInputSize + sizeof(tag))
+    {
+        LOG3(logMessage, "WARN", "provided output buffer is shorter than minimum required");
+        return 0;
+    }
+
+    pAlgorithmOutput = (byte*)OPENSSL_zalloc(pSymCipher->nInputSize);
+
+    EVP_EncryptUpdate(pSymCipher->pCtx, pAlgorithmOutput, &len, pSymCipher->psInput, pSymCipher->nInputSize);
+        
+    if (len != pSymCipher->nInputSize)
+    {
+        LOG3(logMessage, "ERROR", "output size not equal to estimation");
+    }
+
+    EVP_EncryptFinal_ex(pSymCipher->pCtx, NULL /*can this be NULL?*/, &len); // purpose is to compute tag
+    
+    params[0] = OSSL_PARAM_construct_octet_string(OSSL_CIPHER_PARAM_AEAD_TAG, tag, sizeof(tag));
+
+    EVP_CIPHER_CTX_get_params(pSymCipher->pCtx, params);
+
+    if (pSymCipher->nBytesToBeInjected > 0)
+        memcpy(pOutput + nOffset, pSymCipher->pBytesToBeInjected, pSymCipher->nBytesToBeInjected);
+
+    memcpy(pOutput + nOffset + pSymCipher->nBytesToBeInjected, pAlgorithmOutput, pSymCipher->nInputSize);
+    memcpy(pOutput + nOffset + pSymCipher->nBytesToBeInjected + pSymCipher->nInputSize, tag, sizeof(tag));
+    return pSymCipher->nBytesToBeInjected + pSymCipher->nInputSize + sizeof(tag);
+}
+
+static int CipherRetrieveEncryptionOutput_AES_CBC(SymmetricCipher* pSymCipher, byte* pOutput, int nOffset, int nLength)
 {
     int nEstimatedOutputSize;
     byte* pAlgorithmOutput;
@@ -848,7 +907,7 @@ static int CipherRetrieveEncryptionOutput(SymmetricCipher* pSymCipher, byte* pOu
     EVP_EncryptFinal_ex(pSymCipher->pCtx, pAlgorithmOutput + len, &len);
     nConfirmedOutputSize += len; // this "len" will be final block of encryted data, the residual of real data + pad, it should be equal to block size
 
-    // why would anyone skip the output of encryption?
+    // why would anyone skip the output of encryption for CBC mode?
     if (pSymCipher->nBytesToBeSkipped > 0)
     {
         LOG3(logMessage, "ERROR", "Deliver encryption output", 0, 0, "Encryption output is partially skipped");
@@ -868,6 +927,53 @@ static int CipherRetrieveEncryptionOutput(SymmetricCipher* pSymCipher, byte* pOu
     return nCopy;
 }
 
+// If there is injection in the encryption, the call of this function should strip the injection
+static int CipherRetrieveDecryptionOutput_AES_GCM(SymmetricCipher* pSymCipher, byte* pOutput, int nOffset, int nLength)
+{
+    int nCipherTextSize;
+    byte* pAlgorithmOutput;
+    int len = 0, nConfirmedOutputSize = 0;
+    int nInject = 0, nCopy = 0;
+    byte tag[16];
+    byte* pTagStart;
+
+    OSSL_PARAM params[2] = { OSSL_PARAM_END, OSSL_PARAM_END };
+
+    pTagStart = pSymCipher->psInput + pSymCipher->nInputSize - 16;
+    memcpy(tag, pTagStart, 16);
+
+    nCipherTextSize = pSymCipher->nInputSize - sizeof(tag);
+
+    pAlgorithmOutput = (byte*)OPENSSL_zalloc(nCipherTextSize);
+
+    EVP_DecryptUpdate(pSymCipher->pCtx, pAlgorithmOutput, &len, pSymCipher->psInput, nCipherTextSize);
+    if (len != nCipherTextSize)
+    {
+        LOG3(logMessage, "WARN", "Decryption output size is not equal to estimation", 0, 0, "");
+    }
+
+    params[0] = OSSL_PARAM_construct_octet_string(OSSL_CIPHER_PARAM_AEAD_TAG,
+        (void*)tag, sizeof(tag));
+
+    EVP_CIPHER_CTX_set_params(pSymCipher->pCtx, params);
+
+    // verify tag
+    EVP_DecryptFinal_ex(pSymCipher->pCtx, NULL/*can this be NULL?*/, &len); // must call final if there is padding
+    
+
+    nInject = min(nLength, pSymCipher->nBytesToBeInjected);
+    if (nInject > 0)
+        memcpy(pOutput + nOffset, pSymCipher->pBytesToBeInjected, nInject);
+
+    nCopy = 0;
+    if (nInject < nLength)
+    {
+        nCopy = min(nLength - nInject, nCipherTextSize - pSymCipher->nBytesToBeSkipped);
+        memcpy(pOutput + nOffset + nInject, pAlgorithmOutput + pSymCipher->nBytesToBeSkipped, nCopy);
+    }
+    return nInject + nCopy;
+}
+
 /*
 * "nLength" is the available space of pOutput
 * Must not write more than "nLength" to pOutput.
@@ -875,7 +981,7 @@ static int CipherRetrieveEncryptionOutput(SymmetricCipher* pSymCipher, byte* pOu
 * we know the length of the bytes spat out by encryption algorithm.
 * And we know there are 4 bytes salt at the beginning.
 */
-static int CipherRetrieveDecryptionOutput(SymmetricCipher* pSymCipher, byte* pOutput, int nOffset, int nLength)
+static int CipherRetrieveDecryptionOutput_AES_CBC(SymmetricCipher* pSymCipher, byte* pOutput, int nOffset, int nLength)
 {
     int nEstimatedOutputSize;
     byte* pAlgorithmOutput;
@@ -912,11 +1018,25 @@ int CipherRetrieveOutput(SymmetricCipher *pSymCipher, byte *pOutput, int nOffset
 {
     if (pSymCipher->fEncrypt)
     {
-        return CipherRetrieveEncryptionOutput(pSymCipher, pOutput, nOffset, nLength);
+        switch (pSymCipher->nAlgorithm)
+        {
+        case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_AES256_CBC:
+            return CipherRetrieveEncryptionOutput_AES_CBC(pSymCipher, pOutput, nOffset, nLength);
+
+        case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_AES256_GCM:
+            return CipherRetrieveEncryptionOutput_AES_GCM(pSymCipher, pOutput, nOffset, nLength);
+        }
     }
     else
     {
-        return CipherRetrieveDecryptionOutput(pSymCipher, pOutput, nOffset, nLength);
+        switch (pSymCipher->nAlgorithm)
+        {
+            case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_AES256_CBC:
+                return CipherRetrieveDecryptionOutput_AES_CBC(pSymCipher, pOutput, nOffset, nLength);
+
+            case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_AES256_GCM:
+                return CipherRetrieveDecryptionOutput_AES_GCM(pSymCipher, pOutput, nOffset, nLength);
+        }
     }
 }
 
@@ -953,16 +1073,30 @@ int getEncryptedBufferSizeUsingJavaformat(int nEncrypAlog, int nInputSize)
             return 0;
 
         case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_AES256_GCM:
-            return 1;
+            return nInputSize + 10 + com_adaptiva_fips_CryptoConstants_BLOCK_SIZE_AES256_GCM;
+            // counter mode, cipher text length = plain text length, default MAC tag length is one AES block size
 
         case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_TRIPLE_DES_CBC:
             return nInputSize + 10 + com_adaptiva_fips_CryptoConstants_BLOCK_SIZE_TRIPLE_DES_CBC - ((nInputSize + 4) % com_adaptiva_fips_CryptoConstants_BLOCK_SIZE_TRIPLE_DES_CBC);
     }
 }
 
+/*
+* "nInputSize" is the size of the buffer produced by "encryptBufferUsingJavaformat"
+* It equals 1(key type) + 1(algo) + 4(IV material) + bytes spat out by encryption algorithm
+* 
+* In case of GCM, "bytes spat out by the encryption algorithm" includes cipher text and MAC tag
+* because I concatenate the tag to the end of the cipher text.
+* 
+* So nInputsize - 10 is either 
+*    the cipher corresponding to (the real plain text + padding)
+* or
+*    (the cipher corresponding to the real plain text) + MAC tag
+* salt is always included because salt is encrypted, so salt should be fed to decryption algorithm
+*/
 int getDecryptedBufferSizeUsingJavaformat(int nInputSize)
 {
-    return max(12, (nInputSize - 10));
+    return max(12, (nInputSize - 10));  // Why 12?
 }
 
 
@@ -1093,7 +1227,7 @@ byte *encryptBufferUsingJavaformat(int encrypAlgo, byte *key, int nKeyLength, by
 * 
 *    \____________________________________________ pDataBuffer _____________________________________________/
 * 
-*                                        \__________________________ cipher input __________________________/
+*                                         \__________________________ cipher input _________________________/
 * 
 *                                                               \____________ pDecryptedBuffer _____________/
 * 

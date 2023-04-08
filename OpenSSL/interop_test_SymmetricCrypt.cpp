@@ -101,4 +101,55 @@ namespace INTEROP_TEST_SYMMETRICCRYPT {
 			free(decryptedBuffer);
 	}
 
+	void test4()
+	{
+		byte* key = NULL;
+		int keyLen = 16;
+		key = (byte*)malloc(keyLen);
+
+		ADAPTIVA_CRYPTOPP::RngFillByteArrayRegion(key, 0, keyLen);
+
+		byte* encryptedBuffer = NULL;
+		int encryptedBufferSize = 0;
+		encryptedBuffer = ADAPTIVA_CRYPTOPP::encryptBufferUsingJavaformat(3, key, keyLen, (byte*)clearText2, strlen(clearText2) + 1, &encryptedBufferSize);
+
+		byte* decryptedBuffer = NULL;
+		int decryptedBufferSize;
+		decryptedBuffer = ADAPTIVA_CRYPTOPP::decryptBufferUsingJavaformat(3, key, keyLen, encryptedBuffer, encryptedBufferSize, &decryptedBufferSize);
+
+		std::cout << decryptedBuffer << std::endl;
+
+		if (key)
+			free(key);
+		if (encryptedBuffer)
+			free(encryptedBuffer);
+		if (decryptedBuffer)
+			free(decryptedBuffer);
+	}
+
+	void test5()
+	{
+		byte* key = NULL;
+		int keyLen = 16;
+		key = (byte*)malloc(keyLen);
+
+		ADAPTIVA_CRYPTOPP::RngFillByteArrayRegion(key, 0, keyLen);
+
+		byte* encryptedBuffer = NULL;
+		int encryptedBufferSize = 0;
+		encryptedBuffer = ADAPTIVA_OPENSSL::encryptBufferUsingJavaformat(3, key, keyLen, (byte*)clearText2, strlen(clearText2) + 1, &encryptedBufferSize);
+
+		byte* decryptedBuffer = NULL;
+		int decryptedBufferSize;
+		decryptedBuffer = ADAPTIVA_OPENSSL::decryptBufferUsingJavaformat(3, key, keyLen, encryptedBuffer, encryptedBufferSize, &decryptedBufferSize);
+
+		std::cout << decryptedBuffer << std::endl;
+
+		if (key)
+			free(key);
+		if (encryptedBuffer)
+			free(encryptedBuffer);
+		if (decryptedBuffer)
+			free(decryptedBuffer);
+	}
 }
