@@ -24,13 +24,6 @@
 #include <Windows.h>
 
 
-
-
-// EVP_PKEY_print_public
-// p_lib.c
-
-
-
 typedef unsigned char byte;
 
 namespace ADAPTIVA_AUX {
@@ -143,8 +136,9 @@ void RngFillByteArrayRegion(byte* pArray, int nStartingOffset, int nBytes)
     {
         if (RAND_bytes(pArray+nStartingOffset, nBytes) <= 0)
         {
-            LOG3(logMessage, "FAIL", "Generate array random", ERR_get_error());
+            LOG3(logMessage, "FAIL", "Generate array random", ERR_get_error(), 1, "");
         }
+        return;
     }
     LOG3(logMessage, "FAIL", "Generate array random", 0, 0, "Invalid Input");
 }
@@ -471,6 +465,7 @@ byte *SHDigest(SecureHashState *pState, int *pnByteArraySize)
             return NULL;
         }
     }
+    return NULL;
 }
 
 bool SHReset(SecureHashState *pState)
@@ -737,6 +732,7 @@ bool CipherSetKeyAndInitialVector(SymmetricCipher *pSymCipher, byte *pKey, int n
             break;
 
             case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_TRIPLE_DES_CBC:
+                EVP_EncryptInit_ex2(pSymCipher->pCtx, pSymCipher->pImplement, pKey, pIV, NULL);
             break;
         }
     }
@@ -767,6 +763,7 @@ bool CipherSetKeyAndInitialVector(SymmetricCipher *pSymCipher, byte *pKey, int n
             break;
             
             case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_TRIPLE_DES_CBC:
+                EVP_DecryptInit_ex2(pSymCipher->pCtx, pSymCipher->pImplement, pKey, pIV, NULL);
             break;
         }
     }
@@ -891,7 +888,7 @@ static int CipherRetrieveEncryptionOutput_AES_GCM(SymmetricCipher* pSymCipher, b
     return pSymCipher->nBytesToBeInjected + pSymCipher->nInputSize + sizeof(tag);
 }
 
-static int CipherRetrieveEncryptionOutput_AES_CBC(SymmetricCipher* pSymCipher, byte* pOutput, int nOffset, int nLength)
+static int CipherRetrieveEncryptionOutput_CBC(SymmetricCipher* pSymCipher, byte* pOutput, int nOffset, int nLength)
 {
     int nEstimatedOutputSize;
     byte* pAlgorithmOutput;
@@ -981,7 +978,7 @@ static int CipherRetrieveDecryptionOutput_AES_GCM(SymmetricCipher* pSymCipher, b
 * we know the length of the bytes spat out by encryption algorithm.
 * And we know there are 4 bytes salt at the beginning.
 */
-static int CipherRetrieveDecryptionOutput_AES_CBC(SymmetricCipher* pSymCipher, byte* pOutput, int nOffset, int nLength)
+static int CipherRetrieveDecryptionOutput_CBC(SymmetricCipher* pSymCipher, byte* pOutput, int nOffset, int nLength)
 {
     int nEstimatedOutputSize;
     byte* pAlgorithmOutput;
@@ -1021,7 +1018,8 @@ int CipherRetrieveOutput(SymmetricCipher *pSymCipher, byte *pOutput, int nOffset
         switch (pSymCipher->nAlgorithm)
         {
         case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_AES256_CBC:
-            return CipherRetrieveEncryptionOutput_AES_CBC(pSymCipher, pOutput, nOffset, nLength);
+        case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_TRIPLE_DES_CBC:
+            return CipherRetrieveEncryptionOutput_CBC(pSymCipher, pOutput, nOffset, nLength);
 
         case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_AES256_GCM:
             return CipherRetrieveEncryptionOutput_AES_GCM(pSymCipher, pOutput, nOffset, nLength);
@@ -1032,12 +1030,14 @@ int CipherRetrieveOutput(SymmetricCipher *pSymCipher, byte *pOutput, int nOffset
         switch (pSymCipher->nAlgorithm)
         {
             case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_AES256_CBC:
-                return CipherRetrieveDecryptionOutput_AES_CBC(pSymCipher, pOutput, nOffset, nLength);
+            case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_TRIPLE_DES_CBC:
+                return CipherRetrieveDecryptionOutput_CBC(pSymCipher, pOutput, nOffset, nLength);
 
             case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_AES256_GCM:
                 return CipherRetrieveDecryptionOutput_AES_GCM(pSymCipher, pOutput, nOffset, nLength);
         }
     }
+    return -1;
 }
 
 int CipherSkipBytes(SymmetricCipher *pSymCipher, int nToBeSkippedByteCount)
@@ -1079,6 +1079,7 @@ int getEncryptedBufferSizeUsingJavaformat(int nEncrypAlog, int nInputSize)
         case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_TRIPLE_DES_CBC:
             return nInputSize + 10 + com_adaptiva_fips_CryptoConstants_BLOCK_SIZE_TRIPLE_DES_CBC - ((nInputSize + 4) % com_adaptiva_fips_CryptoConstants_BLOCK_SIZE_TRIPLE_DES_CBC);
     }
+    return 0;
 }
 
 /*
@@ -1093,6 +1094,11 @@ int getEncryptedBufferSizeUsingJavaformat(int nEncrypAlog, int nInputSize)
 * or
 *    (the cipher corresponding to the real plain text) + MAC tag
 * salt is always included because salt is encrypted, so salt should be fed to decryption algorithm
+* 
+* 
+* So this buffer size is almost always an over estimation (except in CBC mode where there is no padding needed)
+* So the decryption API should return the true size of the decrypted plain text.
+* If the decrypted plain text is ASCII string, the size should include the terminating '\0'
 */
 int getDecryptedBufferSizeUsingJavaformat(int nInputSize)
 {
@@ -2487,6 +2493,8 @@ byte* DhGetPublicKey(DHState *pState, int *pnPublicKeyLength)
         return DhGetPublicKey_DL(pState, pnPublicKeyLength);
     else if (pState->dhtype == 3)
         return DhGetPublicKey_EC(pState, pnPublicKeyLength);
+
+    return NULL;
 }
 
 static bool deriveSecretDH(EVP_PKEY *peerKey, EVP_PKEY *selfKeyPair, byte **ppSecret, int *pnSecretLength)
@@ -2683,7 +2691,6 @@ static int DsaGenerateKeyPairInPlainBinary(byte **ppPriKey, int *pnPriKeyLen, by
     // EVP_PKEY_get_params can also work, but it requires two successive calls, first the output data
     // field set to null so that it only gets the length.
 
-end:
     EVP_PKEY_CTX_free(curveCtx);
     EVP_PKEY_CTX_free(keyCtx);
     EVP_PKEY_free(curve);

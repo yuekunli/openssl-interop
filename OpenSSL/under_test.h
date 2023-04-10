@@ -41,4 +41,17 @@ namespace INTEROP_TEST_SYMMETRICCRYPT {
 	void test1();
 	void test2();
 	void test3();
+	void test4();
+	void test5();
+	void test6();
+	void test7();
+	void test8();
+	void test9();
+	void test10();
+	void test11();
+}
+
+namespace AUX_TEST {
+	void test1();
+	void test2();
 }
