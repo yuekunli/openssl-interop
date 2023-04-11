@@ -22,10 +22,12 @@ int main()
 	//INTEROP_TEST_ECDSA::test5();
 
 
-	//INTEROP_TEST_DH::test1();
+	INTEROP_TEST_DH::test_DL_cryptopp_init_openssl_respond();
+	//INTEROP_TEST_DH::test_DL_openssl_init_cryptopp_respond();
 	//INTEROP_TEST_DH::test2();
 	//INTEROP_TEST_DH::test3();
 	//INTEROP_TEST_DH::test4();
+	//INTEROP_TEST_DH::test6();
 
 	//INTEROP_TEST_SYMMETRICCRYPT::test1();
 	//INTEROP_TEST_SYMMETRICCRYPT::test2();
@@ -36,6 +38,6 @@ int main()
 	//INTEROP_TEST_SYMMETRICCRYPT::test7();
 	//INTEROP_TEST_SYMMETRICCRYPT::test11();
 
-	AUX_TEST::test1();
-	AUX_TEST::test2();
+	//AUX_TEST::test1();
+	//AUX_TEST::test2();
 }

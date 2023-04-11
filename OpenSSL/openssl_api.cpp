@@ -2271,7 +2271,7 @@ static bool DhInitialize_DL(DHState *dhState)
 
     bool success = false;
     
-    bool test_unified = true;
+    bool test_unified = false;
 
     if (test_unified)
     {
@@ -2412,8 +2412,10 @@ DHState *DhInitialize(int dhtype, char *pszRemotePartyParams)
 
     if (dhState == NULL)
         return NULL;
+    
+    dhState->dhtype = dhtype;
 
-    bool test_combined_domain_and_keypair = true;
+    bool test_combined_domain_and_keypair = false;
 
     if (dhtype == 1 || dhtype == 2)
     {
@@ -2549,8 +2551,11 @@ int DhCompleteHandshake(DHState *pState, byte *pRemotePublicKey, int nRemotePubl
     // can't use EVP_PKEY_new_raw_public_key_ex to create peer key structure, because discrete log DH and ECDH don't support it
     if (pState->dhtype == 1 || pState->dhtype == com_adaptiva_fips_CryptoConstants_DH2048)
     {
-        //peerKey = createPeerPKEY_DL(pState->pBNPrime, pState->pBNGenerator, pRemotePublicKey, nRemotePublicKeyLength);
-        peerKey = createPeerPKEY_DL_WithNamedGroup(pState->pBNPrime, pState->pBNGenerator, pRemotePublicKey, nRemotePublicKeyLength);
+        // this is going to be a problem, openssl <---> openssl, I can use named group.
+        // in case of crypto++(Alice) <---> openssl(Bob), I can't use named group.
+        // because crypto++ doesn't use named group, openssl (as Bob) can only build DH domain by importing randomly selected Prime and Generator
+        peerKey = createPeerPKEY_DL(pState->pBNPrime, pState->pBNGenerator, pRemotePublicKey, nRemotePublicKeyLength);
+        //peerKey = createPeerPKEY_DL_WithNamedGroup(pState->pBNPrime, pState->pBNGenerator, pRemotePublicKey, nRemotePublicKeyLength);
         selfKeyPair = pState->keyPair;
     }
     else

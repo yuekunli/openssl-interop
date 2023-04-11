@@ -31,10 +31,12 @@ namespace INTEROP_TEST_SYMMETRICCRYPT {
 }
 
 namespace INTEROP_TEST_DH {
-	void test1();
+	void test_DL_cryptopp_init_openssl_respond();
+	void test_DL_openssl_init_cryptopp_respond();
 	void test2();
 	void test3();
 	void test4();
+	void test6();
 }
 
 namespace INTEROP_TEST_SYMMETRICCRYPT {
