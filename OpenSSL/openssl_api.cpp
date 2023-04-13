@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <cstring>
 #include <string.h>
+#include<iostream>
 
 
 
@@ -924,7 +925,7 @@ static int CipherRetrieveEncryptionOutput_CBC(SymmetricCipher* pSymCipher, byte*
     return nCopy;
 }
 
-// If there is injection in the encryption, the call of this function should strip the injection
+// If there were injected bytes in front of the output of encryption, the caller of this function should strip off those injected bytes
 static int CipherRetrieveDecryptionOutput_AES_GCM(SymmetricCipher* pSymCipher, byte* pOutput, int nOffset, int nLength)
 {
     int nCipherTextSize;
@@ -1651,6 +1652,7 @@ done:
 // Elliptic Curve Asymmetric Key Schema
 // =========================================
 
+// not in use
 static int generate_ec_curve(OSSL_LIB_CTX *libctx, EVP_PKEY **ppCurve)
 {
     int result = 0;
@@ -1676,6 +1678,7 @@ static int generate_ec_curve(OSSL_LIB_CTX *libctx, EVP_PKEY **ppCurve)
     return 1;
 }
 
+// not in use
 static int generate_ec_key_pair(OSSL_LIB_CTX *libctx, EVP_PKEY *curve, EVP_PKEY **ppKeyPair)
 {
     int result = 0;
@@ -1711,7 +1714,7 @@ static int generate_ec_key_pair(OSSL_LIB_CTX *libctx, EVP_PKEY *curve, EVP_PKEY 
     return result;
 }
 
-static EVP_PKEY *createPkeyWithOneKey_EC(byte *pKnownKey, int nKeyLength, bool isPublic)
+static EVP_PKEY *createPkeyWithOneKey_EC_combined_curve_keypair(byte *pKnownKey, int nKeyLength, bool isPublic)
 {
     OSSL_PARAM_BLD *paramBuild = NULL;
     OSSL_PARAM *params = NULL;
@@ -1776,7 +1779,7 @@ static EVP_PKEY *createPkeyWithOneKey_EC(byte *pKnownKey, int nKeyLength, bool i
     return pkey;
 }
 
-static EVP_PKEY *createPkeyWithOneKey_EC_2(byte *pKnownKey, int nKeyLength, bool isPublic)
+static EVP_PKEY *createPkeyWithOneKey_EC_curve_keypair_separate(byte *pKnownKey, int nKeyLength, bool isPublic)
 {
     EVP_PKEY *curve = NULL;
     EVP_PKEY *pkey = NULL;
@@ -1784,8 +1787,6 @@ static EVP_PKEY *createPkeyWithOneKey_EC_2(byte *pKnownKey, int nKeyLength, bool
 
     OSSL_PARAM params[4];
     OSSL_PARAM *p = params;
-
-
 
     *p++ = OSSL_PARAM_construct_utf8_string(OSSL_PKEY_PARAM_GROUP_NAME, (char*)SN_X9_62_prime256v1, 0);
     *p++ = OSSL_PARAM_construct_utf8_string(OSSL_PKEY_PARAM_EC_FIELD_TYPE, (char*)"prime-field", 0);
@@ -1830,10 +1831,10 @@ static EVP_PKEY *createPkeyWithOneKey_EC_2(byte *pKnownKey, int nKeyLength, bool
 
 static EVP_PKEY *createPeerPKEY_EC(byte *pRemotePublicKey, int nRemotePublicKeyLength)
 {
-    return createPkeyWithOneKey_EC(pRemotePublicKey, nRemotePublicKeyLength, /* is public*/true);
+    return createPkeyWithOneKey_EC_combined_curve_keypair(pRemotePublicKey, nRemotePublicKeyLength, /* is public*/true);
 }
 
-static EVP_PKEY* adaptiva_generate_ec_keypair()
+static EVP_PKEY* generate_EC_keypair_curve_keypair_separate()
 {
     EVP_PKEY *curve = NULL;
     EVP_PKEY *pkey = NULL;
@@ -1889,7 +1890,7 @@ static EVP_PKEY* adaptiva_generate_ec_keypair()
     return pkey;
 }
 
-static EVP_PKEY* adaptiva_generate_ec_keypair2()
+static EVP_PKEY* generate_EC_keypair_single_context()
 {
     int r;
 
@@ -1914,54 +1915,7 @@ static EVP_PKEY* adaptiva_generate_ec_keypair2()
     return key;
 }
 
-static EVP_PKEY* do_ec_keygen(void)
-{
-    /*
-     * The libctx and propq can be set if required, they are included here
-     * to show how they are passed to EVP_PKEY_CTX_new_from_name().
-     */
-    OSSL_LIB_CTX* libctx = NULL;
-    const char* propq = NULL;
-    EVP_PKEY* key = NULL;
-    OSSL_PARAM params[3];
-    EVP_PKEY_CTX* genctx = NULL;
-    const char* curvename = "P-256";
-    int use_cofactordh = 1;
 
-    genctx = EVP_PKEY_CTX_new_from_name(libctx, "EC", propq);
-    if (genctx == NULL) {
-        fprintf(stderr, "EVP_PKEY_CTX_new_from_name() failed\n");
-        goto cleanup;
-    }
-
-    if (EVP_PKEY_keygen_init(genctx) <= 0) {
-        fprintf(stderr, "EVP_PKEY_keygen_init() failed\n");
-        goto cleanup;
-    }
-
-    params[0] = OSSL_PARAM_construct_utf8_string(OSSL_PKEY_PARAM_GROUP_NAME,
-        (char*)curvename, 0);
-    /*
-     * This is an optional parameter.
-     * For many curves where the cofactor is 1, setting this has no effect.
-     */
-    params[1] = OSSL_PARAM_construct_int(OSSL_PKEY_PARAM_USE_COFACTOR_ECDH,
-        &use_cofactordh);
-    params[2] = OSSL_PARAM_construct_end();
-    if (!EVP_PKEY_CTX_set_params(genctx, params)) {
-        fprintf(stderr, "EVP_PKEY_CTX_set_params() failed\n");
-        goto cleanup;
-    }
-
-    fprintf(stdout, "Generating EC key\n\n");
-    if (EVP_PKEY_generate(genctx, &key) <= 0) {
-        fprintf(stderr, "EVP_PKEY_generate() failed\n");
-        goto cleanup;
-    }
-cleanup:
-    EVP_PKEY_CTX_free(genctx);
-    return key;
-}
 
 // ==================================
 // Diffie-Hellman Key Exchange
@@ -2032,18 +1986,28 @@ static bool DhInitialize_DL_liyk(DHState* p)
     BIGNUM* pBNPrime = NULL, * pBNGenerator = NULL;
     OSSL_PARAM params[2];
     EVP_PKEY* pkey = NULL;
-    EVP_PKEY_CTX* pctx = EVP_PKEY_CTX_new_from_name(NULL, "DH", NULL);
-
+    EVP_PKEY_CTX* pctx = NULL;
     BIGNUM* pBNPubKey = NULL;
-
     bool success = false;
+
+    if ((pctx = EVP_PKEY_CTX_new_from_name(NULL, "DH", NULL)) == NULL)
+        return NULL;
+
     params[0] = OSSL_PARAM_construct_utf8_string("group", (char*)"ffdhe2048", 0);
     params[1] = OSSL_PARAM_construct_end();
 
-    EVP_PKEY_keygen_init(pctx);
-    EVP_PKEY_CTX_set_params(pctx, params);
-    EVP_PKEY_generate(pctx, &pkey);
-
+    if (EVP_PKEY_keygen_init(pctx) != 1)
+    {
+        goto done;
+    }
+    if (EVP_PKEY_CTX_set_params(pctx, params) != 1)
+    {
+        goto done;
+    }
+    if (EVP_PKEY_generate(pctx, &pkey) != 1)
+    {
+        goto done;
+    }
     if (!EVP_PKEY_get_bn_param(pkey, OSSL_PKEY_PARAM_FFC_P, &pBNPrime))
     {
         LOG3(logMessage, "FAIL", "get Prime BIGNUM format", 0, 0, "");
@@ -2061,7 +2025,7 @@ static bool DhInitialize_DL_liyk(DHState* p)
         goto done;
     }
 
-    // Is this pkey the key pair?
+    // this pkey is the key pair
     if (!EVP_PKEY_get_bn_param(pkey, OSSL_PKEY_PARAM_PUB_KEY, &pBNPubKey))
     {
         LOG3(logMessage, "FAIL", "Get public key from key pair", 0, 0, "");
@@ -2080,14 +2044,14 @@ done:
         if (pBNGenerator)
             BN_free(pBNGenerator);
         if (p->pszDhPrimeAndGeneratorInBinary)
-            free(p->pszDhPrimeAndGeneratorInBinary);
+            free(p->pszDhPrimeAndGeneratorInBinary); // comes from getFormattedString, not OPENSSL_malloc'ed
     }
     else
     {
         p->pBNPrime = pBNPrime;
         p->pBNGenerator = pBNGenerator;
 
-        // Is this pkey the domain or the key pair?
+        // This pkey is already the key pair, don't need to store the domain
         //p->dlDomain = pkey;
         p->keyPair = pkey;
         p->pBNPubKey = pBNPubKey;
@@ -2100,7 +2064,7 @@ static bool DhInitialize_DL_AliceInitiate(DHState* p)
     EVP_PKEY* domainParams = NULL;
     EVP_PKEY_CTX* dompCtx = NULL;
 
-    BIGNUM* pBNPrime = NULL, * pBNGenerator = NULL;
+    BIGNUM* pBNPrime = NULL, * pBNGenerator = NULL, *pBNQ = NULL;
 
     bool success = false;
 
@@ -2141,6 +2105,12 @@ static bool DhInitialize_DL_AliceInitiate(DHState* p)
         LOG3(logMessage, "FAIL", "get Generator BIGNUM format", 0, 0, "");
         goto done;
     }
+    if (!EVP_PKEY_get_bn_param(domainParams, OSSL_PKEY_PARAM_FFC_Q, &pBNQ))
+    {
+        LOG3(logMessage, "FAIL", "get q BIGNUM format", 0, 0, "");
+        goto done;
+    }
+    
     p->pszDhPrimeAndGeneratorInBinary = DhDomainBignumToBinary(pBNPrime, pBNGenerator);
     if (p->pszDhPrimeAndGeneratorInBinary == NULL)
     {
@@ -2149,6 +2119,24 @@ static bool DhInitialize_DL_AliceInitiate(DHState* p)
     }
 
     success = true;
+    
+    /* if we want to test not-well-defined DH domain (i.e. not named groups)
+    * I can either have the underlying algorithm search for proper p,g,q
+    * or I can hard code their value. Searching p,g,q is slow when their length is 2048 bits.
+    * In order to save time (by cheating a little) in testing non-named groups, I can display p,g,q's values
+    * here and save them then hard code their value.
+    {
+        char* hexPrime = BN_bn2hex(pBNPrime);
+        char* hexGenerator = BN_bn2hex(pBNGenerator);
+        char* hexQ = BN_bn2hex(pBNQ);
+        std::cout << hexPrime << "\n\n";
+        std::cout << hexGenerator << "\n\n";
+        std::cout << hexQ << "\n\n";
+        OPENSSL_free(hexPrime);
+        OPENSSL_free(hexGenerator);
+        OPENSSL_free(hexQ);
+    }
+    */
 
 done:
 
@@ -2163,6 +2151,8 @@ done:
             BN_free(pBNGenerator);
         if (pBNPrime)
             BN_free(pBNPrime);
+        if (pBNQ)
+            BN_free(pBNQ);
         if (p->pszDhPrimeAndGeneratorInBinary)
             free(p->pszDhPrimeAndGeneratorInBinary);
     }
@@ -2170,6 +2160,8 @@ done:
     {
         p->pBNGenerator = pBNGenerator;
         p->pBNPrime = pBNPrime;
+        if (pBNQ)
+            BN_free(pBNQ);
         p->dlDomain = domainParams;
     }
     return success;
@@ -2358,7 +2350,7 @@ static bool DhInitialize_EC(DHState *dhState)
     //BIGNUM *pBNPubKey = NULL, *pBNPriKey = NULL;
     bool success = false;
 
-    pkey = adaptiva_generate_ec_keypair();
+    pkey = generate_EC_keypair_curve_keypair_separate();
     if (pkey == NULL)
     {
         goto done;
@@ -2551,11 +2543,15 @@ int DhCompleteHandshake(DHState *pState, byte *pRemotePublicKey, int nRemotePubl
     // can't use EVP_PKEY_new_raw_public_key_ex to create peer key structure, because discrete log DH and ECDH don't support it
     if (pState->dhtype == 1 || pState->dhtype == com_adaptiva_fips_CryptoConstants_DH2048)
     {
-        // this is going to be a problem, openssl <---> openssl, I can use named group.
-        // in case of crypto++(Alice) <---> openssl(Bob), I can't use named group.
-        // because crypto++ doesn't use named group, openssl (as Bob) can only build DH domain by importing randomly selected Prime and Generator
-        peerKey = createPeerPKEY_DL(pState->pBNPrime, pState->pBNGenerator, pRemotePublicKey, nRemotePublicKeyLength);
         //peerKey = createPeerPKEY_DL_WithNamedGroup(pState->pBNPrime, pState->pBNGenerator, pRemotePublicKey, nRemotePublicKeyLength);
+
+        // openssl <---> openssl, using named group is more convenient.
+        // In case of crypto++(Alice) <---> openssl(Bob), openssl (as Bob) needs to build DH domain by importing
+        // randomly selected Prime and Generator, because crypto++ doesn't use named group.
+        // Because the need to inter-operate with Crypto++, we build DH domain by importing Prime and Generator.
+
+        peerKey = createPeerPKEY_DL(pState->pBNPrime, pState->pBNGenerator, pRemotePublicKey, nRemotePublicKeyLength);
+
         selfKeyPair = pState->keyPair;
     }
     else
@@ -2706,7 +2702,7 @@ static int DsaGenerateKeyPairInPlainBinary(byte **ppPriKey, int *pnPriKeyLen, by
 int DsaGenerateKeyPair(byte **ppPriKey, int *pnPriKeyLen, byte **ppPubKey, int *pnPubKeyLen)
 {
     EVP_PKEY* pkey = NULL; 
-    pkey = adaptiva_generate_ec_keypair();
+    pkey = generate_EC_keypair_curve_keypair_separate();
 
     size_t priLen, pubLen;
 
@@ -2842,8 +2838,8 @@ byte* derDecodeEcdsaSignature(byte* sig, int* outputLen)
 }
 
 
-// signature generated is in DER encoded format
-static int DsaGenerateSignature_liyk(byte *pDataBuffer, int nDataBufferLength, byte *pPrivateKey, int nPrivateKeyLength, byte **ppSignature, int *pnSignatureLength)
+// OpenSSL always generates ECDSA signature in DER encoded format
+static int generateDerEncodedEcdsaSignature(byte *pDataBuffer, int nDataBufferLength, byte *pPrivateKey, int nPrivateKeyLength, byte **ppSignature, int *pnSignatureLength)
 {
     EVP_PKEY *pkey = NULL;
 
@@ -2878,7 +2874,7 @@ int DsaGenerateSignature(byte* pDataBuffer, int nDataBufferLength, byte* pPrivat
     int plainSigLen;
     byte* plainSig = NULL;
 
-    DsaGenerateSignature_liyk(pDataBuffer, nDataBufferLength, pPrivateKey, nPrivateKeyLength, &derEncodedSig, &derEncodedSigLen);
+    generateDerEncodedEcdsaSignature(pDataBuffer, nDataBufferLength, pPrivateKey, nPrivateKeyLength, &derEncodedSig, &derEncodedSigLen);
 
     plainSig = derDecodeEcdsaSignature(derEncodedSig, &plainSigLen);
 
@@ -2891,9 +2887,8 @@ int DsaGenerateSignature(byte* pDataBuffer, int nDataBufferLength, byte* pPrivat
 }
 
 
-
-// assuming signature provided is in DER encoded format
-static int DsaVerifySignature_liyk(byte *pDataBuffer, int nDataBufferLength, byte *pPublicKey, int nPublicKeyLength, byte *pSignature, int nSignatureLenght)
+// OpenSSL always assumes the input signature is in DER encoded format
+static int verifyDerEncodedEcdsaSignature(byte *pDataBuffer, int nDataBufferLength, byte *pPublicKey, int nPublicKeyLength, byte *pSignature, int nSignatureLenght)
 {
     EVP_PKEY *pkey = NULL;
 
@@ -2924,7 +2919,7 @@ int DsaVerifySignature(byte* pDataBuffer, int nDataBufferLength, byte* pPublicKe
     derEncodedSig = derEncodeEcdsaSignature(pSignature, &derEncodedSigLen);
     
     int ret;
-    ret = DsaVerifySignature_liyk(pDataBuffer, nDataBufferLength, pPublicKey, nPublicKeyLength, derEncodedSig, derEncodedSigLen);
+    ret = verifyDerEncodedEcdsaSignature(pDataBuffer, nDataBufferLength, pPublicKey, nPublicKeyLength, derEncodedSig, derEncodedSigLen);
     
     free(derEncodedSig);
     
@@ -3096,14 +3091,14 @@ static byte *computeHmacSha1(byte *key, int keyLen, byte *pData, int dataLen, in
     return hmacOutput;
 }
 
-byte *DsaEncryptBuffer(byte *pPublicKey, int nPublicKeyLength, byte *pDataBuffer, int nDataBufferLength, int *pnEncryptedBufferSize)
+static byte* eciesEncryptBuffer(byte* pPublicKey, int nPublicKeyLength, byte* pDataBuffer, int nDataBufferLength, int* pnEncryptedBufferSize)
 {
     // get self and peer's keys ready
     EVP_PKEY *peerKey;
     derDecodeECPkey(&peerKey, pPublicKey, nPublicKeyLength, /*publicOrPrivate*/true);
 
     EVP_PKEY *selfKeyPair = NULL;
-    selfKeyPair = adaptiva_generate_ec_keypair2();
+    selfKeyPair = generate_EC_keypair_single_context();
 
     // derive a secret
     byte *sec;
@@ -3180,7 +3175,7 @@ byte *DsaEncryptBuffer(byte *pPublicKey, int nPublicKeyLength, byte *pDataBuffer
     return pOutputStart;
 }
 
-byte *DsaDecryptBuffer(byte *pPrivateKey, int nPrivateKeyLength, byte *pDataBuffer, int nDataBufferLength, int *pnDecryptedBufferSize)
+static byte* eciesDecryptBuffer(byte* pPrivateKey, int nPrivateKeyLength, byte* pDataBuffer, int nDataBufferLength, int* pnDecryptedBufferSize)
 {
     // get self and peer's keys ready
     EVP_PKEY *selfKey;
@@ -3191,7 +3186,7 @@ byte *DsaDecryptBuffer(byte *pPrivateKey, int nPrivateKeyLength, byte *pDataBuff
     byte *pRemotePubKey = pDataBuffer;
     int nRemotePubKeyLen = 65;
 
-    peerKey = createPkeyWithOneKey_EC(pRemotePubKey, nRemotePubKeyLen, /*is public*/true);
+    peerKey = createPkeyWithOneKey_EC_combined_curve_keypair(pRemotePubKey, nRemotePubKeyLen, /*is public*/true);
 
     // derive a secret
     byte *sec;
@@ -3234,6 +3229,16 @@ byte *DsaDecryptBuffer(byte *pPrivateKey, int nPrivateKeyLength, byte *pDataBuff
     OPENSSL_free(pComputedHmacTag);
 
     return pClearText;
+}
+
+byte* DsaEncryptBuffer(byte* pPublicKey, int nPublicKeyLength, byte* pDataBuffer, int nDataBufferLength, int* pnEncryptedBufferSize)
+{
+    return eciesEncryptBuffer(pPublicKey, nPublicKeyLength, pDataBuffer, nDataBufferLength, pnEncryptedBufferSize);
+}
+
+byte* DsaDecryptBuffer(byte* pPrivateKey, int nPrivateKeyLength, byte* pDataBuffer, int nDataBufferLength, int* pnDecryptedBufferSize)
+{
+    return eciesDecryptBuffer(pPrivateKey, nPrivateKeyLength, pDataBuffer, nDataBufferLength, pnDecryptedBufferSize);
 }
 
 }

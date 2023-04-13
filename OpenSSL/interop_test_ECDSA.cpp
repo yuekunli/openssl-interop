@@ -2,135 +2,119 @@
 #include "adaptiva_openssl.h"
 
 #include <iostream>
+#include <sstream>
 
 namespace INTEROP_TEST_ECDSA {
 
-	void test1()
+
+	enum LIB
+	{
+		CRYPTOPP = 0,
+		OPENSSL = 1
+	};
+
+	char const* lib_names[] = { "Crypto++", "OpenSSL" };
+
+	static void test(LIB keygen, LIB sign, LIB verify)
 	{
 		char message[] = "It was the best of times";
 
-		byte* pub, * pri;
-
-		int pubLen, priLen;
-
-		ADAPTIVA_CRYPTOPP::DsaGenerateKeyPair(&pri, &priLen, &pub, &pubLen);
-
-		byte* sig;
-		int sigLen;
-
-		ADAPTIVA_CRYPTOPP::DsaGenerateSignature((byte*)message, sizeof(message), pri, priLen, &sig, &sigLen);
-
-		int isMatch;
-
-		isMatch = ADAPTIVA_OPENSSL::DsaVerifySignature((byte*)message, sizeof(message), pub, pubLen, sig, sigLen);
-
-		std::cout << std::boolalpha << (isMatch == 0) << std::endl;
-
-		free(pub);
-		free(pri);
-		free(sig);
-	}
-
-
-	void test2()
-	{
-		char message[] = "It was the best of times";
-
-		byte* pub, * pri;
-
-		int pubLen, priLen;
-
-		ADAPTIVA_CRYPTOPP::DsaGenerateKeyPair(&pri, &priLen, &pub, &pubLen);
-
-		byte* sig;
-		int sigLen;
-
-		ADAPTIVA_OPENSSL::DsaGenerateSignature((byte*)message, sizeof(message), pri, priLen, &sig, &sigLen);
-
-		int isMatch;
-
-		isMatch = ADAPTIVA_OPENSSL::DsaVerifySignature((byte*)message, sizeof(message), pub, pubLen, sig, sigLen);
-
-		std::cout << std::boolalpha << (isMatch == 0) << std::endl;
-	}
-
-
-	void test3()
-	{
-		char message[] = "It was the best of times";
-
-		byte* pub, * pri;
-
-		int pubLen, priLen;
-
-		ADAPTIVA_CRYPTOPP::DsaGenerateKeyPair(&pri, &priLen, &pub, &pubLen);
-
-		byte* sig;
-		int sigLen;
-
-		ADAPTIVA_OPENSSL::DsaGenerateSignature((byte*)message, sizeof(message), pri, priLen, &sig, &sigLen);
-
-		int isMatch;
-
-		isMatch = ADAPTIVA_CRYPTOPP::DsaVerifySignature((byte*)message, sizeof(message), pub, pubLen, sig, sigLen);
-
-		std::cout << std::boolalpha << (isMatch == 0) << std::endl;
-
-		free(pub);
-		free(pri);
-		free(sig);
-	}
-
-	void test4()
-	{
-		char message[] = "It was the best of times";
+		std::stringstream ss;
+		ss << "ECDSA Test    " << lib_names[keygen] << " generate keys   " << lib_names[sign] << " sign   " << lib_names[verify] << " verify\n";
 
 		byte* pub = NULL, * pri = NULL;
-
 		int pubLen, priLen;
 
-		ADAPTIVA_OPENSSL::DsaGenerateKeyPair(&pri, &priLen, &pub, &pubLen);
-
-		byte* sig;
+		byte* sig = NULL;
 		int sigLen;
 
-		ADAPTIVA_CRYPTOPP::DsaGenerateSignature((byte*)message, sizeof(message), pri, priLen, &sig, &sigLen);
+		int isMatch = -99;
 
-		int isMatch;
+		if (keygen == LIB::CRYPTOPP)
+			ADAPTIVA_CRYPTOPP::DsaGenerateKeyPair(&pri, &priLen, &pub, &pubLen);
+		else if (keygen == LIB::OPENSSL)
+			ADAPTIVA_OPENSSL::DsaGenerateKeyPair(&pri, &priLen, &pub, &pubLen);
 
-		isMatch = ADAPTIVA_OPENSSL::DsaVerifySignature((byte*)message, sizeof(message), pub, pubLen, sig, sigLen);
+		if (pub == NULL || pri == NULL)
+		{
+			std::cout << "FAIL   " << ss.str();
+			goto cleanup;
+		}
 
-		std::cout << std::boolalpha << (isMatch == 0) << std::endl;
+		if (sign == LIB::CRYPTOPP)
+			ADAPTIVA_CRYPTOPP::DsaGenerateSignature((byte*)message, sizeof(message), pri, priLen, &sig, &sigLen);
+		else if (sign == LIB::OPENSSL)
+			ADAPTIVA_OPENSSL::DsaGenerateSignature((byte*)message, sizeof(message), pri, priLen, &sig, &sigLen);
 
-		free(pub);
-		free(pri);
-		free(sig);
+		if (verify == LIB::CRYPTOPP)
+			isMatch = ADAPTIVA_CRYPTOPP::DsaVerifySignature((byte*)message, sizeof(message), pub, pubLen, sig, sigLen);
+		else if (verify == LIB::OPENSSL)
+			isMatch = ADAPTIVA_OPENSSL::DsaVerifySignature((byte*)message, sizeof(message), pub, pubLen, sig, sigLen);
+
+		if (isMatch == 0)
+			std::cout << "SUCCESS   " << ss.str();
+		else
+			std::cout << "FAIL   " << ss.str();
+
+	cleanup:
+
+		if (pub)
+			free(pub);
+		if (pri)
+			free(pri);
+		if (sig)
+			free(sig);
 	}
 
-	void test5()
+	void test_ECDSA()
 	{
-		char message[] = "It was the best of times";
+		LIB library[2] = { LIB::CRYPTOPP, LIB::OPENSSL };
 
-		byte* pub = NULL, * pri = NULL;
-
-		int pubLen, priLen;
-
-		ADAPTIVA_OPENSSL::DsaGenerateKeyPair(&pri, &priLen, &pub, &pubLen);
-
-		byte* sig;
-		int sigLen;
-
-		ADAPTIVA_OPENSSL::DsaGenerateSignature((byte*)message, sizeof(message), pri, priLen, &sig, &sigLen);
-
-		int isMatch;
-
-		isMatch = ADAPTIVA_CRYPTOPP::DsaVerifySignature((byte*)message, sizeof(message), pub, pubLen, sig, sigLen);
-
-		std::cout << std::boolalpha << (isMatch == 0) << std::endl;
-
-		free(pub);
-		free(pri);
-		free(sig);
+		for (int i = 0; i < 2; i++)
+		{
+			for (int j = 0; j < 2; j++)
+			{
+				for (int k = 0; k < 2; k++)
+				{
+					test(library[i], library[j], library[k]);
+				}
+			}
+		}
+		
 	}
 
+	void test_cryptopp_generate_keys_cryptopp_sign_openssl_verify()
+	{
+		test(LIB::CRYPTOPP, LIB::CRYPTOPP, LIB::OPENSSL);
+	}
+
+	void test_cryptopp_generate_keys_openssl_sign_cryptopp_verify()
+	{
+		test(LIB::CRYPTOPP, LIB::OPENSSL, LIB::CRYPTOPP);
+	}
+
+	void test_cryptopp_generate_keys_openssl_sign_openssl_verify()
+	{
+		test(LIB::CRYPTOPP, LIB::OPENSSL, LIB::OPENSSL);
+	}
+
+	void test_openssl_generate_keys_cryptopp_sign_openssl_verify()
+	{
+		test(LIB::OPENSSL, LIB::CRYPTOPP, LIB::OPENSSL);
+	}
+
+	void test_openssl_generate_keys_openssl_sign_cryptopp_verify()
+	{
+		test(LIB::OPENSSL, LIB::OPENSSL, LIB::CRYPTOPP);
+	}
+
+	void test_openssl_generate_keys_openssl_sign_openssl_verify()
+	{
+		test(LIB::OPENSSL, LIB::OPENSSL, LIB::OPENSSL);
+	}
+
+	void test_openssl_generate_keys_cryptopp_sign_cryptopp_verify()
+	{
+		test(LIB::OPENSSL, LIB::CRYPTOPP, LIB::CRYPTOPP);
+	}
 }
