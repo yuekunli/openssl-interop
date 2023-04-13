@@ -2,6 +2,7 @@
 #include "adaptiva_cryptopp.h"
 
 #include <iostream>
+#include <sstream>
 
 namespace INTEROP_TEST_ECIES {
 
@@ -114,6 +115,89 @@ namespace INTEROP_TEST_ECIES {
         free(cipherText);
         free(plainText);
     }
+
+
+    enum LIB
+    {
+        CRYPTOPP = 0,
+        OPENSSL = 1
+    };
+
+    char const* lib_names[] = { "Crypto++", "OpenSSL" };
+    LIB libraries[2] = { LIB::CRYPTOPP, LIB::OPENSSL };
+
+    static void test(LIB keygen, LIB encrypt_lib, LIB decrypt_lib)
+    {
+        std::stringstream ss;
+        ss << "ECIES  Test  " << lib_names[keygen] << "  generate keys   " << lib_names[encrypt_lib] << "  encrypt  " << lib_names[decrypt_lib] << "  decrypt\n";
+        
+        char message[] = "It was the best of times";
+
+        byte* pub = NULL, * pri = NULL;
+        int pubLen, priLen;
+
+        int encryptedBufferSize;
+        byte* cipherText = NULL;
+
+        int decryptedBufferSize;
+        byte* plainText = NULL;
+
+        if (keygen == LIB::CRYPTOPP)
+            ADAPTIVA_CRYPTOPP::DsaGenerateKeyPair(&pri, &priLen, &pub, &pubLen);
+        else if (keygen == LIB::OPENSSL)
+            ADAPTIVA_OPENSSL::DsaGenerateKeyPair(&pri, &priLen, &pub, &pubLen);
+
+        if (pub == NULL || pri == NULL)
+        {
+            std::cout << "FAIL  " << ss.str();
+            goto cleanup;
+        }
+
+        if (encrypt_lib == LIB::CRYPTOPP)
+            cipherText = ADAPTIVA_CRYPTOPP::DsaEncryptBuffer(pub, pubLen, (byte*)message, sizeof(message), &encryptedBufferSize);
+        else if (encrypt_lib == LIB::OPENSSL)
+            cipherText = ADAPTIVA_OPENSSL::DsaEncryptBuffer(pub, pubLen, (byte*)message, sizeof(message), &encryptedBufferSize);
+
+        if (decrypt_lib == LIB::CRYPTOPP)
+            plainText = ADAPTIVA_CRYPTOPP::DsaDecryptBuffer(pri, priLen, cipherText, encryptedBufferSize, &decryptedBufferSize);
+        else if (decrypt_lib == LIB::OPENSSL)
+            plainText = ADAPTIVA_OPENSSL::DsaDecryptBuffer(pri, priLen, cipherText, encryptedBufferSize, &decryptedBufferSize);
+
+        if (strcmp(message, (char*)plainText) == 0)
+        {
+            std::cout << "PASS  " << ss.str();
+        }
+        else
+        {
+            std::cout << "FAIL  " << ss.str();
+        }
+
+    cleanup:
+
+        if (pub)
+            free(pub);
+        if (pri)
+            free(pri);
+        if (cipherText)
+            free(cipherText);
+        if (plainText)
+            free(plainText);
+    }
+
+    void test_ECIES()
+    {
+        for (int i = 0; i < 2; i++)
+        {
+            for (int j = 0; j < 2; j++)
+            {
+                for (int k = 0; k < 2; k++)
+                {
+                    test(libraries[i], libraries[j], libraries[k]);
+                }
+            }
+        }
+    }
+
 
     void test_cryptopp_generate_keys_cryptopp_encrypt_openssl_decrypt()
     {

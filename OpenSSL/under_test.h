@@ -10,15 +10,7 @@ namespace Test_ECIES_2 {
 }
 
 namespace INTEROP_TEST_ECIES {
-	void test_static_keys_cryptopp_encrypt_openssl_decrypt();
-	void test_static_keys_openssl_encrypt_cryptopp_decrypt();
-	void test_cryptopp_generate_keys_cryptopp_encrypt_openssl_decrypt();
-	void test_cryptopp_generate_keys_openssl_encrypt_cryptopp_decrypt();
-	void test_cryptopp_generate_keys_openssl_encrypt_openssl_decrypt();
-	void test_openssl_generate_keys_cryptopp_encrypt_openssl_decrypt();
-	void test_openssl_generate_keys_openssl_encrypt_cryptopp_decrypt();
-	void test_openssl_generate_keys_openssl_encrypt_openssl_decrypt();
-	void test_openssl_generate_keys_cryptopp_encrypt_cryptopp_decrypt();
+	void test_ECIES();
 }
 
 namespace INTEROP_TEST_ECDSA {
@@ -26,14 +18,7 @@ namespace INTEROP_TEST_ECDSA {
 }
 
 namespace INTEROP_TEST_DH {
-	void test_DL1024_cryptopp_init_openssl_respond();
-	void test_DL2048_cryptopp_init_openssl_respond();
-	void test_DL2048_openssl_init_cryptopp_respond();
-	void test_DL1024_cryptopp_init_cryptopp_respond();
-	void test_DL2048_named_group_openssl_init_openssl_respond();
-	void test_EC_p256_curve_openssl_init_openssl_respond();
-	void test_EC_p256_curve_cryptopp_init_openssl_respond();
-	void test_EC_p256_curve_openssl_init_cryptopp_respond();
+	void test_Diffie_Hellman();
 }
 
 namespace INTEROP_TEST_SYMMETRICCRYPT {

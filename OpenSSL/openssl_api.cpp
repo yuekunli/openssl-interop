@@ -2595,6 +2595,8 @@ int DhRelease(DHState *pState)
             OPENSSL_free(pState->sharedSecret);
         if (pState->pszDhPrimeAndGeneratorInBinary != NULL)
             zeroAndFreeBuffer(pState->pszDhPrimeAndGeneratorInBinary, strlen(pState->pszDhPrimeAndGeneratorInBinary));
+
+        OPENSSL_free(pState);
     }
     return 1;
 }
