@@ -1,8 +1,8 @@
 #include<iostream>
 
-#include<Windows.h>
+typedef unsigned char byte;
 
-namespace ADAPTIVA_OPENSSL {
+namespace BYTE_BUFFERIZED_OPENSSL {
 	byte* aes128_block_encrypt(byte* data, int data_len, byte* key);
 	byte* aes128_block_decrypt(byte* data, int data_len, byte* key);
 	byte* aes128_block_encrypt_incremental(byte* data, int data_len, byte* key);
@@ -21,9 +21,9 @@ namespace OPENSSL_AES_ECB_TEST {
 			0x12, 0x34, 0x56, 0x78, 0x90, 0xab, 0xcd, 0xef,
 			0xf0, 0xe1, 0xd2, 0xc3, 0xb4, 0xa5, 0x96, 0x87
 		};
-		ciphertext = ADAPTIVA_OPENSSL::aes128_block_encrypt((byte*)plaintext, 16, key);
+		ciphertext = BYTE_BUFFERIZED_OPENSSL::aes128_block_encrypt((byte*)plaintext, 16, key);
 
-		recovered_plaintext = ADAPTIVA_OPENSSL::aes128_block_decrypt(ciphertext, 16, key);
+		recovered_plaintext = BYTE_BUFFERIZED_OPENSSL::aes128_block_decrypt(ciphertext, 16, key);
 
 		std::cout << (char*)recovered_plaintext << std::endl;
 
@@ -41,9 +41,9 @@ namespace OPENSSL_AES_ECB_TEST {
 			0x12, 0x34, 0x56, 0x78, 0x90, 0xab, 0xcd, 0xef,
 			0xf0, 0xe1, 0xd2, 0xc3, 0xb4, 0xa5, 0x96, 0x87
 		};
-		ciphertext = ADAPTIVA_OPENSSL::aes128_block_encrypt((byte*)plaintext, 32, key);
+		ciphertext = BYTE_BUFFERIZED_OPENSSL::aes128_block_encrypt((byte*)plaintext, 32, key);
 
-		recovered_plaintext = ADAPTIVA_OPENSSL::aes128_block_decrypt(ciphertext, 32, key);
+		recovered_plaintext = BYTE_BUFFERIZED_OPENSSL::aes128_block_decrypt(ciphertext, 32, key);
 
 		std::cout << (char*)recovered_plaintext << std::endl;
 
@@ -60,9 +60,9 @@ namespace OPENSSL_AES_ECB_TEST {
 			0x12, 0x34, 0x56, 0x78, 0x90, 0xab, 0xcd, 0xef,
 			0xf0, 0xe1, 0xd2, 0xc3, 0xb4, 0xa5, 0x96, 0x87
 		};
-		ciphertext = ADAPTIVA_OPENSSL::aes128_block_encrypt((byte*)plaintext, 32, key);
+		ciphertext = BYTE_BUFFERIZED_OPENSSL::aes128_block_encrypt((byte*)plaintext, 32, key);
 
-		recovered_plaintext = ADAPTIVA_OPENSSL::aes128_block_decrypt(ciphertext, 16, key);
+		recovered_plaintext = BYTE_BUFFERIZED_OPENSSL::aes128_block_decrypt(ciphertext, 16, key);
 
 		char recovered_text_with_termination[17];
 		memset(recovered_text_with_termination, 0, 17);
@@ -84,9 +84,9 @@ namespace OPENSSL_AES_ECB_TEST {
 			0x12, 0x34, 0x56, 0x78, 0x90, 0xab, 0xcd, 0xef,
 			0xf0, 0xe1, 0xd2, 0xc3, 0xb4, 0xa5, 0x96, 0x87
 		};
-		ciphertext = ADAPTIVA_OPENSSL::aes128_block_encrypt((byte*)plaintext, 32, key);
+		ciphertext = BYTE_BUFFERIZED_OPENSSL::aes128_block_encrypt((byte*)plaintext, 32, key);
 
-		recovered_plaintext = ADAPTIVA_OPENSSL::aes128_block_decrypt(ciphertext+16, 16, key);
+		recovered_plaintext = BYTE_BUFFERIZED_OPENSSL::aes128_block_decrypt(ciphertext+16, 16, key);
 
 		std::cout << (char*)recovered_plaintext << std::endl;
 
@@ -103,9 +103,9 @@ namespace OPENSSL_AES_ECB_TEST {
 			0x12, 0x34, 0x56, 0x78, 0x90, 0xab, 0xcd, 0xef,
 			0xf0, 0xe1, 0xd2, 0xc3, 0xb4, 0xa5, 0x96, 0x87
 		};
-		ciphertext = ADAPTIVA_OPENSSL::aes128_block_encrypt_incremental((byte*)plaintext, 32, key);
+		ciphertext = BYTE_BUFFERIZED_OPENSSL::aes128_block_encrypt_incremental((byte*)plaintext, 32, key);
 
-		recovered_plaintext = ADAPTIVA_OPENSSL::aes128_block_decrypt_incremental(ciphertext, 32, key);
+		recovered_plaintext = BYTE_BUFFERIZED_OPENSSL::aes128_block_decrypt_incremental(ciphertext, 32, key);
 
 		std::cout << (char*)recovered_plaintext << std::endl;
 

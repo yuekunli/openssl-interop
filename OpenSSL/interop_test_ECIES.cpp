@@ -1,5 +1,5 @@
-#include "adaptiva_openssl.h"
-#include "adaptiva_cryptopp.h"
+#include "bytebuffer_api_openssl.h"
+#include "bytebuffer_api_cryptopp.h"
 
 #include <iostream>
 #include <sstream>
@@ -79,12 +79,12 @@ namespace INTEROP_TEST_ECIES {
         int encryptedBufferSize;
         byte* cipherText;
 
-        cipherText = ADAPTIVA_CRYPTOPP::DsaEncryptBuffer(pub_key_der, sizeof(pub_key_der), (byte*)message, sizeof(message), &encryptedBufferSize);
+        cipherText = BYTE_BUFFERIZED_CRYPTOPP::DsaEncryptBuffer(pub_key_der, sizeof(pub_key_der), (byte*)message, sizeof(message), &encryptedBufferSize);
 
         int decryptedBufferSize;
 
         byte* plainText;
-        plainText = ADAPTIVA_OPENSSL::DsaDecryptBuffer(priv_key_der, sizeof(priv_key_der), cipherText, encryptedBufferSize, &decryptedBufferSize);
+        plainText = BYTE_BUFFERIZED_OPENSSL::DsaDecryptBuffer(priv_key_der, sizeof(priv_key_der), cipherText, encryptedBufferSize, &decryptedBufferSize);
 
         if (strcmp(message, (char*)plainText) != 0)
         {
@@ -100,12 +100,12 @@ namespace INTEROP_TEST_ECIES {
 
         int encryptedBufferSize;
         byte* cipherText;
-        cipherText = ADAPTIVA_OPENSSL::DsaEncryptBuffer(pub_key_der, sizeof(pub_key_der), (byte*)message, sizeof(message), &encryptedBufferSize);
+        cipherText = BYTE_BUFFERIZED_OPENSSL::DsaEncryptBuffer(pub_key_der, sizeof(pub_key_der), (byte*)message, sizeof(message), &encryptedBufferSize);
 
         int decryptedBufferSize;
 
         byte* plainText;
-        plainText = ADAPTIVA_CRYPTOPP::DsaDecryptBuffer(priv_key_der, sizeof(priv_key_der), cipherText, encryptedBufferSize, &decryptedBufferSize);
+        plainText = BYTE_BUFFERIZED_CRYPTOPP::DsaDecryptBuffer(priv_key_der, sizeof(priv_key_der), cipherText, encryptedBufferSize, &decryptedBufferSize);
         // crypto++ can't decode the private key, these two example keys are copied from OpenSSL demo code
 
         if (strcmp(message, (char*)plainText) != 0)
@@ -143,9 +143,9 @@ namespace INTEROP_TEST_ECIES {
         byte* plainText = NULL;
 
         if (keygen == LIB::CRYPTOPP)
-            ADAPTIVA_CRYPTOPP::DsaGenerateKeyPair(&pri, &priLen, &pub, &pubLen);
+            BYTE_BUFFERIZED_CRYPTOPP::DsaGenerateKeyPair(&pri, &priLen, &pub, &pubLen);
         else if (keygen == LIB::OPENSSL)
-            ADAPTIVA_OPENSSL::DsaGenerateKeyPair(&pri, &priLen, &pub, &pubLen);
+            BYTE_BUFFERIZED_OPENSSL::DsaGenerateKeyPair(&pri, &priLen, &pub, &pubLen);
 
         if (pub == NULL || pri == NULL)
         {
@@ -154,14 +154,14 @@ namespace INTEROP_TEST_ECIES {
         }
 
         if (encrypt_lib == LIB::CRYPTOPP)
-            cipherText = ADAPTIVA_CRYPTOPP::DsaEncryptBuffer(pub, pubLen, (byte*)message, sizeof(message), &encryptedBufferSize);
+            cipherText = BYTE_BUFFERIZED_CRYPTOPP::DsaEncryptBuffer(pub, pubLen, (byte*)message, sizeof(message), &encryptedBufferSize);
         else if (encrypt_lib == LIB::OPENSSL)
-            cipherText = ADAPTIVA_OPENSSL::DsaEncryptBuffer(pub, pubLen, (byte*)message, sizeof(message), &encryptedBufferSize);
+            cipherText = BYTE_BUFFERIZED_OPENSSL::DsaEncryptBuffer(pub, pubLen, (byte*)message, sizeof(message), &encryptedBufferSize);
 
         if (decrypt_lib == LIB::CRYPTOPP)
-            plainText = ADAPTIVA_CRYPTOPP::DsaDecryptBuffer(pri, priLen, cipherText, encryptedBufferSize, &decryptedBufferSize);
+            plainText = BYTE_BUFFERIZED_CRYPTOPP::DsaDecryptBuffer(pri, priLen, cipherText, encryptedBufferSize, &decryptedBufferSize);
         else if (decrypt_lib == LIB::OPENSSL)
-            plainText = ADAPTIVA_OPENSSL::DsaDecryptBuffer(pri, priLen, cipherText, encryptedBufferSize, &decryptedBufferSize);
+            plainText = BYTE_BUFFERIZED_OPENSSL::DsaDecryptBuffer(pri, priLen, cipherText, encryptedBufferSize, &decryptedBufferSize);
 
         if (strcmp(message, (char*)plainText) == 0)
         {
@@ -212,16 +212,16 @@ namespace INTEROP_TEST_ECIES {
         int decryptedBufferSize;
         byte* plainText = NULL;
 
-        ADAPTIVA_CRYPTOPP::DsaGenerateKeyPair(&pri, &priLen, &pub, &pubLen);
+        BYTE_BUFFERIZED_CRYPTOPP::DsaGenerateKeyPair(&pri, &priLen, &pub, &pubLen);
 
         if (pub == NULL || pri == NULL)
         {
             std::cout << "FAIL  " << "ECIES  " << "cryptopp generate keys cryptopp encrypt openssl decrypt";
             goto cleanup;
         }
-        cipherText = ADAPTIVA_CRYPTOPP::DsaEncryptBuffer(pub, pubLen, (byte*)message, sizeof(message), &encryptedBufferSize);
+        cipherText = BYTE_BUFFERIZED_CRYPTOPP::DsaEncryptBuffer(pub, pubLen, (byte*)message, sizeof(message), &encryptedBufferSize);
 
-        plainText = ADAPTIVA_OPENSSL::DsaDecryptBuffer(pri, priLen, cipherText, encryptedBufferSize, &decryptedBufferSize);
+        plainText = BYTE_BUFFERIZED_OPENSSL::DsaDecryptBuffer(pri, priLen, cipherText, encryptedBufferSize, &decryptedBufferSize);
 
         if (strcmp(message, (char*)plainText) != 0)
         {
@@ -252,15 +252,15 @@ namespace INTEROP_TEST_ECIES {
         int decryptedBufferSize;
         byte* plainText = NULL;
 
-        ADAPTIVA_CRYPTOPP::DsaGenerateKeyPair(&pri, &priLen, &pub, &pubLen);
+        BYTE_BUFFERIZED_CRYPTOPP::DsaGenerateKeyPair(&pri, &priLen, &pub, &pubLen);
         if (pub == NULL || pri == NULL)
         {
             std::cout << "FAIL  " << "ECIES  " << "cryptopp generate keys openssl encrypt cryptopp decrypt";
             goto cleanup;
         }
-        cipherText = ADAPTIVA_OPENSSL::DsaEncryptBuffer(pub, pubLen, (byte*)message, sizeof(message), &encryptedBufferSize);
+        cipherText = BYTE_BUFFERIZED_OPENSSL::DsaEncryptBuffer(pub, pubLen, (byte*)message, sizeof(message), &encryptedBufferSize);
 
-        plainText = ADAPTIVA_CRYPTOPP::DsaDecryptBuffer(pri, priLen, cipherText, encryptedBufferSize, &decryptedBufferSize);
+        plainText = BYTE_BUFFERIZED_CRYPTOPP::DsaDecryptBuffer(pri, priLen, cipherText, encryptedBufferSize, &decryptedBufferSize);
 
         if (strcmp(message, (char*)plainText) != 0)
         {
@@ -292,15 +292,15 @@ namespace INTEROP_TEST_ECIES {
         int decryptedBufferSize;
         byte* plainText = NULL;
 
-        ADAPTIVA_CRYPTOPP::DsaGenerateKeyPair(&pri, &priLen, &pub, &pubLen);
+        BYTE_BUFFERIZED_CRYPTOPP::DsaGenerateKeyPair(&pri, &priLen, &pub, &pubLen);
         if (pub == NULL || pri == NULL)
         {
             std::cout << "FAIL  " << "ECIES  " << "cryptopp generate keys openssl encrypt openssl decrypt";
             goto cleanup;
         }
-        cipherText = ADAPTIVA_OPENSSL::DsaEncryptBuffer(pub, pubLen, (byte*)message, sizeof(message), &encryptedBufferSize);
+        cipherText = BYTE_BUFFERIZED_OPENSSL::DsaEncryptBuffer(pub, pubLen, (byte*)message, sizeof(message), &encryptedBufferSize);
 
-        plainText = ADAPTIVA_OPENSSL::DsaDecryptBuffer(pri, priLen, cipherText, encryptedBufferSize, &decryptedBufferSize);
+        plainText = BYTE_BUFFERIZED_OPENSSL::DsaDecryptBuffer(pri, priLen, cipherText, encryptedBufferSize, &decryptedBufferSize);
 
         if (strcmp(message, (char*)plainText) != 0)
         {
@@ -332,16 +332,16 @@ namespace INTEROP_TEST_ECIES {
         int decryptedBufferSize;
         byte* plainText = NULL;
 
-        ADAPTIVA_OPENSSL::DsaGenerateKeyPair(&pri, &priLen, &pub, &pubLen);
+        BYTE_BUFFERIZED_OPENSSL::DsaGenerateKeyPair(&pri, &priLen, &pub, &pubLen);
         if (pub == NULL || pri == NULL)
         {
             std::cout << "FAIL  " << "ECIES  " << "openssl generate keys cryptopp encrypt openssl decrypt";
             goto cleanup;
         }
 
-        cipherText = ADAPTIVA_CRYPTOPP::DsaEncryptBuffer(pub, pubLen, (byte*)message, sizeof(message), &encryptedBufferSize);
+        cipherText = BYTE_BUFFERIZED_CRYPTOPP::DsaEncryptBuffer(pub, pubLen, (byte*)message, sizeof(message), &encryptedBufferSize);
 
-        plainText = ADAPTIVA_OPENSSL::DsaDecryptBuffer(pri, priLen, cipherText, encryptedBufferSize, &decryptedBufferSize);
+        plainText = BYTE_BUFFERIZED_OPENSSL::DsaDecryptBuffer(pri, priLen, cipherText, encryptedBufferSize, &decryptedBufferSize);
 
         if (strcmp(message, (char*)plainText) != 0)
         {
@@ -376,16 +376,16 @@ namespace INTEROP_TEST_ECIES {
         byte* plainText = NULL;
 
 
-        ADAPTIVA_OPENSSL::DsaGenerateKeyPair(&pri, &priLen, &pub, &pubLen);
+        BYTE_BUFFERIZED_OPENSSL::DsaGenerateKeyPair(&pri, &priLen, &pub, &pubLen);
         if (pub == NULL || pri == NULL)
         {
             std::cout << "FAIL  " << "ECIES  " << "openssl generate keys openssl encrypt cryptopp decrypt";
             goto cleanup;
         }
 
-        cipherText = ADAPTIVA_OPENSSL::DsaEncryptBuffer(pub, pubLen, (byte*)message, sizeof(message), &encryptedBufferSize);
+        cipherText = BYTE_BUFFERIZED_OPENSSL::DsaEncryptBuffer(pub, pubLen, (byte*)message, sizeof(message), &encryptedBufferSize);
 
-        plainText = ADAPTIVA_CRYPTOPP::DsaDecryptBuffer(pri, priLen, cipherText, encryptedBufferSize, &decryptedBufferSize);
+        plainText = BYTE_BUFFERIZED_CRYPTOPP::DsaDecryptBuffer(pri, priLen, cipherText, encryptedBufferSize, &decryptedBufferSize);
 
         if (strcmp(message, (char*)plainText) != 0)
         {
@@ -419,16 +419,16 @@ namespace INTEROP_TEST_ECIES {
 
         byte* plainText = NULL;
 
-        ADAPTIVA_OPENSSL::DsaGenerateKeyPair(&pri, &priLen, &pub, &pubLen);
+        BYTE_BUFFERIZED_OPENSSL::DsaGenerateKeyPair(&pri, &priLen, &pub, &pubLen);
         if (pub == NULL || pri == NULL)
         {
             std::cout << "FAIL  " << "ECIES  " << "openssl generate keys openssl encrypt openssl decrypt";
             goto cleanup;
         }
 
-        cipherText = ADAPTIVA_OPENSSL::DsaEncryptBuffer(pub, pubLen, (byte*)message, sizeof(message), &encryptedBufferSize);
+        cipherText = BYTE_BUFFERIZED_OPENSSL::DsaEncryptBuffer(pub, pubLen, (byte*)message, sizeof(message), &encryptedBufferSize);
 
-        plainText = ADAPTIVA_OPENSSL::DsaDecryptBuffer(pri, priLen, cipherText, encryptedBufferSize, &decryptedBufferSize);
+        plainText = BYTE_BUFFERIZED_OPENSSL::DsaDecryptBuffer(pri, priLen, cipherText, encryptedBufferSize, &decryptedBufferSize);
         if (strcmp(message, (char*)plainText) != 0)
         {
             std::cout << "FAIL  " << "ECIES  " << "openssl generate keys openssl encrypt openssl decrypt";
@@ -459,15 +459,15 @@ namespace INTEROP_TEST_ECIES {
         int decryptedBufferSize;
         byte* plainText = NULL;
 
-        ADAPTIVA_OPENSSL::DsaGenerateKeyPair(&pri, &priLen, &pub, &pubLen);
+        BYTE_BUFFERIZED_OPENSSL::DsaGenerateKeyPair(&pri, &priLen, &pub, &pubLen);
         if (pub == NULL || pri == NULL)
         {
             std::cout << "FAIL  " << "ECIES  " << "openssl generate keys cryptopp encrypt cryptopp decrypt";
             goto cleanup;
         }
-        cipherText = ADAPTIVA_CRYPTOPP::DsaEncryptBuffer(pub, pubLen, (byte*)message, sizeof(message), &encryptedBufferSize);
+        cipherText = BYTE_BUFFERIZED_CRYPTOPP::DsaEncryptBuffer(pub, pubLen, (byte*)message, sizeof(message), &encryptedBufferSize);
 
-        plainText = ADAPTIVA_CRYPTOPP::DsaDecryptBuffer(pri, priLen, cipherText, encryptedBufferSize, &decryptedBufferSize);
+        plainText = BYTE_BUFFERIZED_CRYPTOPP::DsaDecryptBuffer(pri, priLen, cipherText, encryptedBufferSize, &decryptedBufferSize);
         if (strcmp(message, (char*)plainText) != 0)
         {
             std::cout << "FAIL  " << "ECIES  " << "openssl generate keys cryptopp encrypt cryptopp decrypt";

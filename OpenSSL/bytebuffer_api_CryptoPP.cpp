@@ -25,12 +25,12 @@ using namespace std;
 
 using namespace CryptoPP;
 
-namespace ADAPTIVA_AUX {
+namespace AUXILIARY {
 	char* base32Encode(byte* p, size_t l);
 	byte* base32Decode(char* pszIn, int* outSize);
 }
 
-namespace ADAPTIVA_CRYPTOPP {
+namespace BYTE_BUFFERIZED_CRYPTOPP {
 
 	//======================
 	// forward declaration
@@ -81,12 +81,12 @@ namespace ADAPTIVA_CRYPTOPP {
 		nPrimeBufferSize = piPrime->MinEncodedSize();
 		pPrimeBuffer = (byte*)malloc(nPrimeBufferSize);
 		piPrime->Encode(pPrimeBuffer, nPrimeBufferSize);
-		pszEncodedPrime = ADAPTIVA_AUX::base32Encode(pPrimeBuffer, nPrimeBufferSize);
+		pszEncodedPrime = AUXILIARY::base32Encode(pPrimeBuffer, nPrimeBufferSize);
 
 		nGeneratorBufferSize = piGenerator->MinEncodedSize();
 		pGeneratorBuffer = (byte*)malloc(nGeneratorBufferSize);
 		piGenerator->Encode(pGeneratorBuffer, nGeneratorBufferSize);
-		pszEncodedGenerator = ADAPTIVA_AUX::base32Encode(pGeneratorBuffer, nGeneratorBufferSize);
+		pszEncodedGenerator = AUXILIARY::base32Encode(pGeneratorBuffer, nGeneratorBufferSize);
 
 		// get formatted string
 
@@ -134,12 +134,12 @@ namespace ADAPTIVA_CRYPTOPP {
 
 		//  a  b  c  ,  d  e  f  g  h  \0
 
-		decodedPrime = ADAPTIVA_AUX::base32Decode(pPrime, &decodedPrimeSize);
+		decodedPrime = AUXILIARY::base32Decode(pPrime, &decodedPrimeSize);
 
 		piPrime = new Integer();
 		piPrime->Decode((byte*)decodedPrime, decodedPrimeSize);
 
-		decodedGenerator = ADAPTIVA_AUX::base32Decode(pGenerator, &decodedGeneratorSize);
+		decodedGenerator = AUXILIARY::base32Decode(pGenerator, &decodedGeneratorSize);
 
 		piGenerator = new Integer();
 		piGenerator->Decode((byte*)decodedGenerator, decodedGeneratorSize);
@@ -1325,7 +1325,5 @@ namespace ADAPTIVA_CRYPTOPP {
 		memcpy(out, recovered.data(), recovered.size());
 		return out;
 	}
-
-
 
 }

@@ -1,11 +1,10 @@
-#include "adaptiva_cryptopp.h"
-#include "adaptiva_openssl.h"
+#include "bytebuffer_api_cryptopp.h"
+#include "bytebuffer_api_openssl.h"
 
 #include <iostream>
 #include <sstream>
 
 namespace INTEROP_TEST_ECDSA {
-
 
 	enum LIB
 	{
@@ -31,9 +30,9 @@ namespace INTEROP_TEST_ECDSA {
 		int isMatch = -99;
 
 		if (keygen == LIB::CRYPTOPP)
-			ADAPTIVA_CRYPTOPP::DsaGenerateKeyPair(&pri, &priLen, &pub, &pubLen);
+			BYTE_BUFFERIZED_CRYPTOPP::DsaGenerateKeyPair(&pri, &priLen, &pub, &pubLen);
 		else if (keygen == LIB::OPENSSL)
-			ADAPTIVA_OPENSSL::DsaGenerateKeyPair(&pri, &priLen, &pub, &pubLen);
+			BYTE_BUFFERIZED_OPENSSL::DsaGenerateKeyPair(&pri, &priLen, &pub, &pubLen);
 
 		if (pub == NULL || pri == NULL)
 		{
@@ -42,14 +41,14 @@ namespace INTEROP_TEST_ECDSA {
 		}
 
 		if (sign == LIB::CRYPTOPP)
-			ADAPTIVA_CRYPTOPP::DsaGenerateSignature((byte*)message, sizeof(message), pri, priLen, &sig, &sigLen);
+			BYTE_BUFFERIZED_CRYPTOPP::DsaGenerateSignature((byte*)message, sizeof(message), pri, priLen, &sig, &sigLen);
 		else if (sign == LIB::OPENSSL)
-			ADAPTIVA_OPENSSL::DsaGenerateSignature((byte*)message, sizeof(message), pri, priLen, &sig, &sigLen);
+			BYTE_BUFFERIZED_OPENSSL::DsaGenerateSignature((byte*)message, sizeof(message), pri, priLen, &sig, &sigLen);
 
 		if (verify == LIB::CRYPTOPP)
-			isMatch = ADAPTIVA_CRYPTOPP::DsaVerifySignature((byte*)message, sizeof(message), pub, pubLen, sig, sigLen);
+			isMatch = BYTE_BUFFERIZED_CRYPTOPP::DsaVerifySignature((byte*)message, sizeof(message), pub, pubLen, sig, sigLen);
 		else if (verify == LIB::OPENSSL)
-			isMatch = ADAPTIVA_OPENSSL::DsaVerifySignature((byte*)message, sizeof(message), pub, pubLen, sig, sigLen);
+			isMatch = BYTE_BUFFERIZED_OPENSSL::DsaVerifySignature((byte*)message, sizeof(message), pub, pubLen, sig, sigLen);
 
 		if (isMatch == 0)
 			std::cout << "SUCCESS   " << ss.str();

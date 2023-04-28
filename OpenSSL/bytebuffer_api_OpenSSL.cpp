@@ -28,49 +28,49 @@
 
 typedef unsigned char byte;
 
-namespace ADAPTIVA_AUX {
+namespace AUXILIARY {
     char* base32Encode(byte* p, size_t l);
     byte* base32Decode(char* pszIn, int* outSize);
 }
 
-namespace ADAPTIVA_OPENSSL {
+namespace BYTE_BUFFERIZED_OPENSSL {
 
 
-#define com_adaptiva_fips_CryptoConstants_DH1024 1
-#define com_adaptiva_fips_CryptoConstants_DH2048 2
-#define com_adaptiva_fips_CryptoConstants_DHEC256 3
+#define ___DH1024 1
+#define ___DH2048 2
+#define ___DHEC256 3
 
-#define com_adaptiva_fips_CryptoConstants_SECUREHASH_ALGORITHM_SHA256 1
-#define com_adaptiva_fips_CryptoConstants_SECUREHASH_ALGORITHM_SHA384 2
-#define com_adaptiva_fips_CryptoConstants_SECUREHASH_ALGORITHM_SHA512 3
-
-
-#define com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_AES256_CBC 1
-#define com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_AES256_EAX 2
-#define com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_AES256_GCM 3
-#define com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_TRIPLE_DES_CBC 4
+#define ___SECUREHASH_ALGORITHM_SHA256 1
+#define ___SECUREHASH_ALGORITHM_SHA384 2
+#define ___SECUREHASH_ALGORITHM_SHA512 3
 
 
-#define com_adaptiva_fips_CryptoConstants_BLOCK_SIZE_AES256_CBC  16
-#define com_adaptiva_fips_CryptoConstants_BLOCK_SIZE_AES256_EAX  16
-#define com_adaptiva_fips_CryptoConstants_BLOCK_SIZE_AES256_GCM  16
-#define com_adaptiva_fips_CryptoConstants_BLOCK_SIZE_TRIPLE_DES_CBC 8
+#define ___ENCRYPTION_ALGORITHM_AES256_CBC 1
+#define ___ENCRYPTION_ALGORITHM_AES256_EAX 2
+#define ___ENCRYPTION_ALGORITHM_AES256_GCM 3
+#define ___ENCRYPTION_ALGORITHM_TRIPLE_DES_CBC 4
 
 
-#define com_adaptiva_fips_CryptoConstants_IV_LENGTH_AES256_CBC 16
-#define com_adaptiva_fips_CryptoConstants_IV_LENGTH_AES256_EAX 256
-#define com_adaptiva_fips_CryptoConstants_IV_LENGTH_AES256_GCM 128 // Java code has this macro set to 256
-                                                                    // OpenSSL can support up to 128 bytes IV for GCM
-                                                                    // Crypto++ can support up to 2^64 - 1 bits IV
-                                                                    // OpenSSL MAX IV length is defined in ciphercommon_gcm.h GCM_IV_MAX_SIZE 1024/8
-                                                                    // struct prov_gcm_ctx_st has a field   unsigned char iv[GCM_IV_MAX_SIZE]
-                                                                    // OpenSSL GCM implementation doesn't seem to have technical barrier that keeps IV from being longer than 128 bytes
-                                                                    // Try changing GCM_IV_MAX_SIZE to a bigger value and re-compile the library.
-                                                                    // There is another macro "EVP_MAX_IV_LENGTH" which seems irrelevant to GCM implementation.
-#define com_adaptiva_fips_CryptoConstants_IV_LENGTH_TRIPLE_DES_CBC 8
+#define ___BLOCK_SIZE_AES256_CBC  16
+#define ___BLOCK_SIZE_AES256_EAX  16
+#define ___BLOCK_SIZE_AES256_GCM  16
+#define ___BLOCK_SIZE_TRIPLE_DES_CBC 8
 
 
-#define com_adaptiva_fips_CryptoConstants_KEY_TYPE_NONE 75 // Set this to a non-zero value, so that debugger can show encrypted buffer.
+#define ___IV_LENGTH_AES256_CBC 16
+#define ___IV_LENGTH_AES256_EAX 256
+#define ___IV_LENGTH_AES256_GCM 128 // Java code has this macro set to 256
+                                    // OpenSSL can support up to 128 bytes IV for GCM
+                                    // Crypto++ can support up to 2^64 - 1 bits IV
+                                    // OpenSSL MAX IV length is defined in ciphercommon_gcm.h GCM_IV_MAX_SIZE 1024/8
+                                    // struct prov_gcm_ctx_st has a field   unsigned char iv[GCM_IV_MAX_SIZE]
+                                    // OpenSSL GCM implementation doesn't seem to have technical barrier that keeps IV from being longer than 128 bytes
+                                    // Try changing GCM_IV_MAX_SIZE to a bigger value and re-compile the library.
+                                    // There is another macro "EVP_MAX_IV_LENGTH" which seems irrelevant to GCM implementation.
+#define ___IV_LENGTH_TRIPLE_DES_CBC 8
+
+
+#define ___KEY_TYPE_NONE 75 // Set this to a non-zero value, so that debugger can show encrypted buffer.
 
 
 #define LOG3 printf
@@ -205,7 +205,7 @@ SecureHashState *SHInitialize(int hashingAlgorithm)
 
     switch(pState->hashingAlgorithm)
     {
-        case com_adaptiva_fips_CryptoConstants_SECUREHASH_ALGORITHM_SHA256:
+        case ___SECUREHASH_ALGORITHM_SHA256:
             pState->pSha256 = EVP_MD_fetch(libCtx, "SHA256", /*properties*/NULL);
             if (pState->pSha256 == NULL)
             {
@@ -231,7 +231,7 @@ SecureHashState *SHInitialize(int hashingAlgorithm)
             }
             success = true;
             break;
-        case com_adaptiva_fips_CryptoConstants_SECUREHASH_ALGORITHM_SHA384:
+        case ___SECUREHASH_ALGORITHM_SHA384:
             pState->pSha384 = EVP_MD_fetch(libCtx, "SHA384", /*properties*/NULL);
             if (pState->pSha384 == NULL)
             {
@@ -257,7 +257,7 @@ SecureHashState *SHInitialize(int hashingAlgorithm)
             }
             success = true;
             break;
-        case com_adaptiva_fips_CryptoConstants_SECUREHASH_ALGORITHM_SHA512:
+        case ___SECUREHASH_ALGORITHM_SHA512:
             pState->pSha512 = EVP_MD_fetch(libCtx, "SHA512", /*properties*/NULL);
             if (pState->pSha512 == NULL)
             {
@@ -294,19 +294,19 @@ SecureHashState *SHInitialize(int hashingAlgorithm)
     {
         switch (hashingAlgorithm)
         {
-            case com_adaptiva_fips_CryptoConstants_SECUREHASH_ALGORITHM_SHA256:
+            case ___SECUREHASH_ALGORITHM_SHA256:
                 if (pState->pSha256 != NULL)
                     EVP_MD_free(pState->pSha256);
                 if (pState->pSha256Ctx != NULL)
                     EVP_MD_CTX_free(pState->pSha256Ctx);
                 break;
-            case com_adaptiva_fips_CryptoConstants_SECUREHASH_ALGORITHM_SHA384:
+            case ___SECUREHASH_ALGORITHM_SHA384:
                 if (pState->pSha384 != NULL)
                     EVP_MD_free(pState->pSha384);
                 if (pState->pSha384Ctx != NULL)
                     EVP_MD_CTX_free(pState->pSha384Ctx);
                 break;
-            case com_adaptiva_fips_CryptoConstants_SECUREHASH_ALGORITHM_SHA512:
+            case ___SECUREHASH_ALGORITHM_SHA512:
                 if (pState->pSha512 != NULL)
                     EVP_MD_free(pState->pSha512);
                 if (pState->pSha512Ctx != NULL)
@@ -336,7 +336,7 @@ bool SHUpdate(SecureHashState *pState, byte input)
     {
         switch(pState->hashingAlgorithm)
         {
-            case com_adaptiva_fips_CryptoConstants_SECUREHASH_ALGORITHM_SHA256:
+            case ___SECUREHASH_ALGORITHM_SHA256:
                 if (pState->pSha256 != NULL && pState->pSha256Ctx != NULL)
                 {
                     if (EVP_DigestUpdate(pState->pSha256Ctx, &input, 1) != 1)
@@ -346,7 +346,7 @@ bool SHUpdate(SecureHashState *pState, byte input)
                     return true;
                 }
                 break;
-            case com_adaptiva_fips_CryptoConstants_SECUREHASH_ALGORITHM_SHA384:
+            case ___SECUREHASH_ALGORITHM_SHA384:
                 if (pState->pSha384 != NULL && pState->pSha384Ctx != NULL)
                 {
                     if (EVP_DigestUpdate(pState->pSha384Ctx, &input, 1) != 1)
@@ -356,7 +356,7 @@ bool SHUpdate(SecureHashState *pState, byte input)
                     return true;
                 }
                 break;
-            case com_adaptiva_fips_CryptoConstants_SECUREHASH_ALGORITHM_SHA512:
+            case ___SECUREHASH_ALGORITHM_SHA512:
                 if (pState->pSha512 != NULL && pState->pSha512Ctx != NULL)
                 {
                     if (EVP_DigestUpdate(pState->pSha512Ctx, &input, 1) != 1)
@@ -379,19 +379,19 @@ bool SHUpdate(SecureHashState *pState, byte *input, int nOffset, int nLen)
     {
         switch(pState->hashingAlgorithm)
         {
-            case com_adaptiva_fips_CryptoConstants_SECUREHASH_ALGORITHM_SHA256:
+            case ___SECUREHASH_ALGORITHM_SHA256:
                 if (pState->pSha256 != NULL && pState->pSha256Ctx != NULL)
                 {
                     EVP_DigestUpdate(pState->pSha256Ctx, input+nOffset, nLen);
                 }
                 break;
-            case com_adaptiva_fips_CryptoConstants_SECUREHASH_ALGORITHM_SHA384:
+            case ___SECUREHASH_ALGORITHM_SHA384:
                 if (pState->pSha384 != NULL && pState->pSha384Ctx != NULL)
                 {
                     EVP_DigestUpdate(pState->pSha384Ctx, input+nOffset, nLen);
                 }
                 break;
-            case com_adaptiva_fips_CryptoConstants_SECUREHASH_ALGORITHM_SHA512:
+            case ___SECUREHASH_ALGORITHM_SHA512:
                 if (pState->pSha512 != NULL && pState->pSha512Ctx != NULL)
                 {
                     EVP_DigestUpdate(pState->pSha512Ctx, input+nOffset, nLen);
@@ -422,7 +422,7 @@ byte *SHDigest(SecureHashState *pState, int *pnByteArraySize)
         
         switch(pState->hashingAlgorithm)
         {
-            case com_adaptiva_fips_CryptoConstants_SECUREHASH_ALGORITHM_SHA256:
+            case ___SECUREHASH_ALGORITHM_SHA256:
                 if (pState->pSha256 != NULL && pState->pSha256Ctx != NULL)
                 {
                     if (EVP_DigestFinal(pState->pSha256Ctx, digest, &nLen) != 1)
@@ -433,7 +433,7 @@ byte *SHDigest(SecureHashState *pState, int *pnByteArraySize)
                     success = true;
                 }
                 break;
-            case com_adaptiva_fips_CryptoConstants_SECUREHASH_ALGORITHM_SHA384:
+            case ___SECUREHASH_ALGORITHM_SHA384:
                 if (pState->pSha384 != NULL && pState->pSha384Ctx != NULL)
                 {
                     if (EVP_DigestFinal(pState->pSha384Ctx, digest, &nLen) != 1)
@@ -444,7 +444,7 @@ byte *SHDigest(SecureHashState *pState, int *pnByteArraySize)
                     success = true;
                 }
                 break;
-            case com_adaptiva_fips_CryptoConstants_SECUREHASH_ALGORITHM_SHA512:
+            case ___SECUREHASH_ALGORITHM_SHA512:
                 if (pState->pSha512 != NULL && pState->pSha512Ctx != NULL)
                 {
                     if (EVP_DigestFinal(pState->pSha512Ctx, digest, &nLen) != 1)
@@ -490,7 +490,7 @@ bool SHReset(SecureHashState *pState)
     {
         switch(pState->hashingAlgorithm)
         {
-            case com_adaptiva_fips_CryptoConstants_SECUREHASH_ALGORITHM_SHA256:
+            case ___SECUREHASH_ALGORITHM_SHA256:
                 if (pState->pSha256 != NULL && pState->pSha256Ctx != NULL)
                 {
                     if (EVP_DigestInit(pState->pSha256Ctx, pState->pSha256) != 1) // call EVP_MD_CTX_reset internally
@@ -500,7 +500,7 @@ bool SHReset(SecureHashState *pState)
                     }
                 }
                 break;
-            case com_adaptiva_fips_CryptoConstants_SECUREHASH_ALGORITHM_SHA384:
+            case ___SECUREHASH_ALGORITHM_SHA384:
                 if (pState->pSha384 != NULL && pState->pSha384Ctx != NULL)
                 {
                     if (EVP_DigestInit(pState->pSha384Ctx, pState->pSha384) != 1)
@@ -510,7 +510,7 @@ bool SHReset(SecureHashState *pState)
                     }
                 }
                 break;
-            case com_adaptiva_fips_CryptoConstants_SECUREHASH_ALGORITHM_SHA512:
+            case ___SECUREHASH_ALGORITHM_SHA512:
                 if (pState->pSha512 != NULL && pState->pSha512Ctx != NULL)
                 {
                     if (EVP_DigestInit(pState->pSha512Ctx, pState->pSha512) != 1)
@@ -638,7 +638,7 @@ bool generateBytesFromKeyMaterial(byte* pKeyMaterial, int nKeyMaterialLength, by
     int nBytesFilled = 0;
     int nSecureHashSize;
 
-    byte* pSecureHash = getSecureHash(com_adaptiva_fips_CryptoConstants_SECUREHASH_ALGORITHM_SHA512, pKeyMaterial, nKeyMaterialLength, &nSecureHashSize);
+    byte* pSecureHash = getSecureHash(___SECUREHASH_ALGORITHM_SHA512, pKeyMaterial, nKeyMaterialLength, &nSecureHashSize);
 
     while (nBytesFilled < nBytesWanted)
     {
@@ -654,17 +654,17 @@ int getInitialVectorLength(int encryptionAlgo)
 {
     switch (encryptionAlgo)
     {
-    case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_AES256_CBC:
-        return com_adaptiva_fips_CryptoConstants_IV_LENGTH_AES256_CBC;
+    case ___ENCRYPTION_ALGORITHM_AES256_CBC:
+        return ___IV_LENGTH_AES256_CBC;
 
-    case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_AES256_EAX:
-        return com_adaptiva_fips_CryptoConstants_IV_LENGTH_AES256_EAX;
+    case ___ENCRYPTION_ALGORITHM_AES256_EAX:
+        return ___IV_LENGTH_AES256_EAX;
 
-    case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_AES256_GCM:
-        return com_adaptiva_fips_CryptoConstants_IV_LENGTH_AES256_GCM;
+    case ___ENCRYPTION_ALGORITHM_AES256_GCM:
+        return ___IV_LENGTH_AES256_GCM;
 
-    case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_TRIPLE_DES_CBC:
-        return com_adaptiva_fips_CryptoConstants_IV_LENGTH_TRIPLE_DES_CBC;
+    case ___ENCRYPTION_ALGORITHM_TRIPLE_DES_CBC:
+        return ___IV_LENGTH_TRIPLE_DES_CBC;
     }
     return 0;
 }
@@ -683,22 +683,22 @@ SymmetricCipher *CipherInitialize(int nAlgo, bool fEncrypt)
 
     switch (nAlgo)
     {
-        case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_AES256_CBC:
+        case ___ENCRYPTION_ALGORITHM_AES256_CBC:
         pChosen = pCipherName[0];
-        pSymCipher->nBlockSize = com_adaptiva_fips_CryptoConstants_BLOCK_SIZE_AES256_CBC;
+        pSymCipher->nBlockSize = ___BLOCK_SIZE_AES256_CBC;
         break;
             
-        case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_AES256_EAX:
+        case ___ENCRYPTION_ALGORITHM_AES256_EAX:
         break;
 
-        case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_AES256_GCM:
+        case ___ENCRYPTION_ALGORITHM_AES256_GCM:
         pChosen = pCipherName[2];
-        pSymCipher->nBlockSize = com_adaptiva_fips_CryptoConstants_BLOCK_SIZE_AES256_GCM;
+        pSymCipher->nBlockSize = ___BLOCK_SIZE_AES256_GCM;
         break;
 
-        case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_TRIPLE_DES_CBC:
+        case ___ENCRYPTION_ALGORITHM_TRIPLE_DES_CBC:
         pChosen = pCipherName[3];
-        pSymCipher->nBlockSize = com_adaptiva_fips_CryptoConstants_BLOCK_SIZE_TRIPLE_DES_CBC;
+        pSymCipher->nBlockSize = ___BLOCK_SIZE_TRIPLE_DES_CBC;
         break;
     }
 
@@ -725,16 +725,16 @@ bool CipherSetKeyAndInitialVector(SymmetricCipher *pSymCipher, byte *pKey, int n
     {
         switch (pSymCipher->nAlgorithm)
         {
-            case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_AES256_CBC:
+            case ___ENCRYPTION_ALGORITHM_AES256_CBC:
                 EVP_EncryptInit_ex2(pSymCipher->pCtx, pSymCipher->pImplement, pKey, pIV, NULL);
             break;
 
-            case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_AES256_EAX:
+            case ___ENCRYPTION_ALGORITHM_AES256_EAX:
             break;
 
-            case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_AES256_GCM:
+            case ___ENCRYPTION_ALGORITHM_AES256_GCM:
                 
-                ivlen = com_adaptiva_fips_CryptoConstants_IV_LENGTH_AES256_GCM;
+                ivlen = ___IV_LENGTH_AES256_GCM;
                 if (ivlen == 12)
                 {
                     EVP_EncryptInit_ex2(pSymCipher->pCtx, pSymCipher->pImplement, pKey, pIV, NULL);
@@ -747,7 +747,7 @@ bool CipherSetKeyAndInitialVector(SymmetricCipher *pSymCipher, byte *pKey, int n
                 }
             break;
 
-            case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_TRIPLE_DES_CBC:
+            case ___ENCRYPTION_ALGORITHM_TRIPLE_DES_CBC:
                 EVP_EncryptInit_ex2(pSymCipher->pCtx, pSymCipher->pImplement, pKey, pIV, NULL);
             break;
         }
@@ -756,16 +756,16 @@ bool CipherSetKeyAndInitialVector(SymmetricCipher *pSymCipher, byte *pKey, int n
     {
         switch (pSymCipher->nAlgorithm)
         {
-            case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_AES256_CBC:
+            case ___ENCRYPTION_ALGORITHM_AES256_CBC:
                 EVP_DecryptInit_ex2(pSymCipher->pCtx, pSymCipher->pImplement, pKey, pIV, NULL);
             break;
 
-            case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_AES256_EAX:
+            case ___ENCRYPTION_ALGORITHM_AES256_EAX:
             break;
             
-            case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_AES256_GCM:
+            case ___ENCRYPTION_ALGORITHM_AES256_GCM:
 
-                ivlen = com_adaptiva_fips_CryptoConstants_IV_LENGTH_AES256_GCM;
+                ivlen = ___IV_LENGTH_AES256_GCM;
                 if (ivlen == 12)
                 {
                     EVP_DecryptInit_ex2(pSymCipher->pCtx, pSymCipher->pImplement, pKey, pIV, NULL);
@@ -778,7 +778,7 @@ bool CipherSetKeyAndInitialVector(SymmetricCipher *pSymCipher, byte *pKey, int n
                 }
             break;
             
-            case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_TRIPLE_DES_CBC:
+            case ___ENCRYPTION_ALGORITHM_TRIPLE_DES_CBC:
                 EVP_DecryptInit_ex2(pSymCipher->pCtx, pSymCipher->pImplement, pKey, pIV, NULL);
             break;
         }
@@ -1088,13 +1088,13 @@ int CipherRetrieveOutput(SymmetricCipher *pSymCipher, byte *pOutput, int nOffset
     {
         switch (pSymCipher->nAlgorithm)
         {
-        case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_AES256_CBC:
-        case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_TRIPLE_DES_CBC:
+        case ___ENCRYPTION_ALGORITHM_AES256_CBC:
+        case ___ENCRYPTION_ALGORITHM_TRIPLE_DES_CBC:
             return CipherRetrieveEncryptionOutput_CBC(pSymCipher, pOutput, nOffset, nLength);
 
-        case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_AES256_GCM:
+        case ___ENCRYPTION_ALGORITHM_AES256_GCM:
             return CipherRetrieveEncryptionOutput_AES_GCM(pSymCipher, pOutput, nOffset, nLength);
-        case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_AES256_EAX:
+        case ___ENCRYPTION_ALGORITHM_AES256_EAX:
             return CipherRetrieveEncryptionOutput_AES_EAX(pSymCipher, pOutput, nOffset, nLength);
         }
     }
@@ -1102,14 +1102,14 @@ int CipherRetrieveOutput(SymmetricCipher *pSymCipher, byte *pOutput, int nOffset
     {
         switch (pSymCipher->nAlgorithm)
         {
-            case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_AES256_CBC:
-            case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_TRIPLE_DES_CBC:
+            case ___ENCRYPTION_ALGORITHM_AES256_CBC:
+            case ___ENCRYPTION_ALGORITHM_TRIPLE_DES_CBC:
                 return CipherRetrieveDecryptionOutput_CBC(pSymCipher, pOutput, nOffset, nLength);
 
-            case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_AES256_GCM:
+            case ___ENCRYPTION_ALGORITHM_AES256_GCM:
                 return CipherRetrieveDecryptionOutput_AES_GCM(pSymCipher, pOutput, nOffset, nLength);
 
-            case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_AES256_EAX:
+            case ___ENCRYPTION_ALGORITHM_AES256_EAX:
                 return CipherRetrieveDecryptionOutput_AES_EAX(pSymCipher, pOutput, nOffset, nLength);
         }
     }
@@ -1142,16 +1142,16 @@ int getEncryptedBufferSizeUsingJavaformat(int nEncrypAlog, int nInputSize)
 {
     switch(nEncrypAlog)
     {
-        case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_AES256_CBC:
-            return nInputSize + 10 + com_adaptiva_fips_CryptoConstants_BLOCK_SIZE_AES256_CBC - ((nInputSize + 4) % com_adaptiva_fips_CryptoConstants_BLOCK_SIZE_AES256_CBC);
+        case ___ENCRYPTION_ALGORITHM_AES256_CBC:
+            return nInputSize + 10 + ___BLOCK_SIZE_AES256_CBC - ((nInputSize + 4) % ___BLOCK_SIZE_AES256_CBC);
     
-        case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_AES256_EAX:
-        case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_AES256_GCM:
-            return nInputSize + 10 + com_adaptiva_fips_CryptoConstants_BLOCK_SIZE_AES256_GCM;
+        case ___ENCRYPTION_ALGORITHM_AES256_EAX:
+        case ___ENCRYPTION_ALGORITHM_AES256_GCM:
+            return nInputSize + 10 + ___BLOCK_SIZE_AES256_GCM;
             // counter mode, cipher text length = plain text length, default MAC tag length is one AES block size
 
-        case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_TRIPLE_DES_CBC:
-            return nInputSize + 10 + com_adaptiva_fips_CryptoConstants_BLOCK_SIZE_TRIPLE_DES_CBC - ((nInputSize + 4) % com_adaptiva_fips_CryptoConstants_BLOCK_SIZE_TRIPLE_DES_CBC);
+        case ___ENCRYPTION_ALGORITHM_TRIPLE_DES_CBC:
+            return nInputSize + 10 + ___BLOCK_SIZE_TRIPLE_DES_CBC - ((nInputSize + 4) % ___BLOCK_SIZE_TRIPLE_DES_CBC);
     }
     return 0;
 }
@@ -1220,7 +1220,7 @@ byte *encryptBufferUsingJavaformat(int encrypAlgo, byte *key, int nKeyLength, by
     {
         goto done;
     }
-    pEncryptedBuffer[0] = com_adaptiva_fips_CryptoConstants_KEY_TYPE_NONE;
+    pEncryptedBuffer[0] = ___KEY_TYPE_NONE;
     pEncryptedBuffer[1] = encrypAlgo;
     *((DWORD*)(pEncryptedBuffer + 2)) = RngGenerateDword();
 
@@ -1461,7 +1461,7 @@ static char* DhDomainBignumToBinary(BIGNUM* pBNPrime, BIGNUM* pBNGenerator)
         goto done;
     }
     nPrimeBufferSize = BN_bn2bin(pBNPrime, pPrimeBuffer); // this API has no error code
-    if ((pszBase32EncodedPrime = ADAPTIVA_AUX::base32Encode(pPrimeBuffer, nPrimeBufferSize)) == NULL)
+    if ((pszBase32EncodedPrime = AUXILIARY::base32Encode(pPrimeBuffer, nPrimeBufferSize)) == NULL)
     {
         LOG3(logMessage, "FAIL", "Base 32 encoding Prime binary format", 0, 0, "");
         goto done;
@@ -1474,7 +1474,7 @@ static char* DhDomainBignumToBinary(BIGNUM* pBNPrime, BIGNUM* pBNGenerator)
         goto done;
     }
     nGeneratorBufferSize = BN_bn2bin(pBNGenerator, pGeneratorBuffer);
-    if ((pszBase32EncodedGenerator = ADAPTIVA_AUX::base32Encode(pGeneratorBuffer, nGeneratorBufferSize)) == NULL)
+    if ((pszBase32EncodedGenerator = AUXILIARY::base32Encode(pGeneratorBuffer, nGeneratorBufferSize)) == NULL)
     {
         LOG3(logMessage, "FAIL", "Base 32 encoding Generator binary format", 0, 0, "");
         goto done;
@@ -1539,14 +1539,14 @@ static bool DhDomainBinaryToBignum(char *pszInitializationParameter, BIGNUM** pp
     *pszCommaPtr = '\0';
     pszBase32EncodedGenerator = pszCommaPtr + 1;
 
-    if ((pPrimeBuffer = ADAPTIVA_AUX::base32Decode(pszBase32EncodedPrime, &nPrimeBufferSize)) == NULL || nPrimeBufferSize <= 0)
+    if ((pPrimeBuffer = AUXILIARY::base32Decode(pszBase32EncodedPrime, &nPrimeBufferSize)) == NULL || nPrimeBufferSize <= 0)
     {
         LOG3(logMessage, "FAIL", "Base32 decoding Prime binary format", 0, 0, "");
         goto done;
     }
     pBNPrime = BN_bin2bn(pPrimeBuffer, nPrimeBufferSize, pBNPrime); // This API has no error code
 
-    if ((pGeneratorBuffer = ADAPTIVA_AUX::base32Decode(pszBase32EncodedGenerator, &nGeneratorBufferSize)) == NULL || nGeneratorBufferSize <= 0)
+    if ((pGeneratorBuffer = AUXILIARY::base32Decode(pszBase32EncodedGenerator, &nGeneratorBufferSize)) == NULL || nGeneratorBufferSize <= 0)
     {
         LOG3(logMessage, "FAIL", "Base32 decoding Generator binary format", 0, 0, "");
         goto done;
@@ -2507,7 +2507,7 @@ DHState *DhInitialize(int dhtype, char *pszRemotePartyParams)
             }
         }
     }
-    else if (dhtype == com_adaptiva_fips_CryptoConstants_DHEC256)
+    else if (dhtype == ___DHEC256)
     {
         if (!DhInitialize_EC(dhState))
         {
@@ -2620,7 +2620,7 @@ int DhCompleteHandshake(DHState *pState, byte *pRemotePublicKey, int nRemotePubl
     EVP_PKEY *peerKey;
     EVP_PKEY* selfKeyPair = NULL;
     // can't use EVP_PKEY_new_raw_public_key_ex to create peer key structure, because discrete log DH and ECDH don't support it
-    if (pState->dhtype == 1 || pState->dhtype == com_adaptiva_fips_CryptoConstants_DH2048)
+    if (pState->dhtype == 1 || pState->dhtype == ___DH2048)
     {
         //peerKey = createPeerPKEY_DL_WithNamedGroup(pState->pBNPrime, pState->pBNGenerator, pRemotePublicKey, nRemotePublicKeyLength);
 
@@ -2683,7 +2683,7 @@ int DhRelease(DHState *pState)
 byte *DhGenerateAESKey(DHState *pState, int *pnAESKeyLength)
 {
     byte *aesKeyInBinary = NULL;
-    aesKeyInBinary = getSecureHash(com_adaptiva_fips_CryptoConstants_SECUREHASH_ALGORITHM_SHA256, pState->sharedSecret, pState->nSharedSecretLength, pnAESKeyLength);
+    aesKeyInBinary = getSecureHash(___SECUREHASH_ALGORITHM_SHA256, pState->sharedSecret, pState->nSharedSecretLength, pnAESKeyLength);
     return aesKeyInBinary;
 }
 

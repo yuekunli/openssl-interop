@@ -1,8 +1,18 @@
-#include "stdafx.h"
+#include "osrng.h"
+#include "integer.h"
+//#include "nbtheory.h"
+#include "secblock.h"
+//#include "asn.h"
+//#include "oids.h"
+#include "eccrypto.h"
+//#include "modes.h"
+#include "filters.h"
 
 USING_NAMESPACE(CryptoPP)
 
-namespace Test_ECIES_1 {
+typedef unsigned char BYTE;
+
+namespace CRYPTOPP_DEMO {
  
     static AutoSeededRandomPool _grng;
 
@@ -19,7 +29,7 @@ namespace Test_ECIES_1 {
 
         ECIES<ECP>::Encryptor encryptor;
 
-        StringSource ss(pPublicKey, nPublicKeyLength, TRUE);
+        StringSource ss(pPublicKey, nPublicKeyLength, true);
         encryptor.AccessPublicKey().Load(ss); // public key must be DER encoded, "Load" does BER decode first
 
         encryptor.GetPublicKey().ThrowIfInvalid(_grng, 3);
@@ -69,7 +79,7 @@ namespace Test_ECIES_1 {
         return out;
     }
 
-    void Test_ECIES_encrypt1()
+    void demo_ECIES_encrypt1()
     {
         /*
         * An example public key:
@@ -94,7 +104,7 @@ namespace Test_ECIES_1 {
         free(cipher);
     }
 
-    void Test_ECIES_encrypt2()
+    void demo_ECIES_encrypt2()
     {
         // borrow this encoded bytes array from OpenSSL demo code
         unsigned char pub_key_der[] = {

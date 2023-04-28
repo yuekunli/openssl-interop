@@ -2,9 +2,9 @@
 
 #include <Windows.h>
 
-#include "config.h" // cryptopp/config.h
+#include "config.h" // from Crypto++
 
-namespace ADAPTIVA_CRYPTOPP {
+namespace BYTE_BUFFERIZED_CRYPTOPP {
 
 
 	// =========================
@@ -131,13 +131,5 @@ namespace ADAPTIVA_CRYPTOPP {
 	byte* generateCMAC_3(byte* plaintext, int plaintextLength, byte* key, int key_size, int* tag_size);
 
 	bool verifyCMAC_3(byte* plaintext, int plaintextLength, byte* key, int key_size, byte* tag, int tag_size);
-
-
-
-
-
-
-
-
 
 }

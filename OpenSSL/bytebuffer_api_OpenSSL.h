@@ -2,7 +2,7 @@
 
 #include <Windows.h>
 
-namespace ADAPTIVA_OPENSSL {
+namespace BYTE_BUFFERIZED_OPENSSL {
 
 	// =========================
 	// Random Number Generation

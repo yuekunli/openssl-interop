@@ -1,8 +1,8 @@
-#include <Windows.h>
-#include<iostream>
 #include<map>
 
-namespace ADAPTIVA_AUX {
+typedef unsigned char byte;
+
+namespace AUXILIARY {
 	static char base32EncodingTable[] = "hmw5c98fqe6r3xt4yupadgjk7slnbv2z";
 	static std::map<char, unsigned char>base32DecodeMap = { 
 		{'h', 0}, {'m', 1}, {'w', 2}, {'5', 3}, {'c', 4}, {'9', 5}, {'8', 6}, {'f', 7}, 
@@ -156,7 +156,7 @@ namespace ADAPTIVA_AUX {
 
 
 
-namespace ADAPTIVA_AUX2 {
+namespace AUXILIARY2 {
 	static char base32EncodingTable[] = "hmw5c98fqe6r3xt4yupadgjk7slnbv2z";
 	static std::map<char, unsigned char>base32DecodeMap = {
 		{'h', 0}, {'m', 1}, {'w', 2}, {'5', 3}, {'c', 4}, {'9', 5}, {'8', 6}, {'f', 7},

@@ -2,12 +2,12 @@
 
 typedef unsigned char byte;
 
-namespace ADAPTIVA_AUX {
+namespace AUXILIARY {
     char* base32Encode(byte* p, size_t l);
     byte* base32Decode(char* pszIn, int* outSize);
 }
 
-namespace ADAPTIVA_AUX2 {
+namespace AUXILIARY2 {
     char* base32Encode(byte* p, size_t l);
     byte* base32Decode(char* pszIn, int* outSize);
 }
@@ -33,12 +33,12 @@ namespace AUX_TEST {
     {
         char const * p = clearText;
 
-        char* afterEncoding = ADAPTIVA_AUX::base32Encode((byte*)p, strlen(p)+1);
+        char* afterEncoding = AUXILIARY::base32Encode((byte*)p, strlen(p)+1);
 
         std::cout << afterEncoding << std::endl;
 
         int decodedSize;
-        byte* afterDecoding = ADAPTIVA_AUX::base32Decode(afterEncoding, &decodedSize);
+        byte* afterDecoding = AUXILIARY::base32Decode(afterEncoding, &decodedSize);
 
         std::cout << (char*)afterDecoding << "    " << decodedSize << std::endl;
         free(afterEncoding);
@@ -49,12 +49,12 @@ namespace AUX_TEST {
     {
         char const* p = clearText;
 
-        char* afterEncoding = ADAPTIVA_AUX2::base32Encode((byte*)p, strlen(p)+1);
+        char* afterEncoding = AUXILIARY2::base32Encode((byte*)p, strlen(p)+1);
 
         std::cout << afterEncoding << std::endl;
 
         int decodedSize;
-        byte* afterDecoding = ADAPTIVA_AUX2::base32Decode(afterEncoding, &decodedSize);
+        byte* afterDecoding = AUXILIARY2::base32Decode(afterEncoding, &decodedSize);
 
         std::cout << (char*)afterDecoding << "    " << decodedSize << std::endl;
         free(afterEncoding);

@@ -1,13 +1,11 @@
 #pragma once
 
-namespace Test_ECIES_1 {
-	void Test_ECIES_encrypt1();
-	void Test_ECIES_encrypt2();
+namespace CRYPTOPP_DEMO {
+	void demo_ECIES_encrypt1();
+	void demo_ECIES_encrypt2();
+	void demo_ECIES_2();
 }
 
-namespace Test_ECIES_2 {
-	void Run_Test_ECIES_2();
-}
 
 namespace INTEROP_TEST_ECIES {
 	void test_ECIES();
@@ -23,6 +21,8 @@ namespace INTEROP_TEST_DH {
 
 namespace INTEROP_TEST_SYMMETRICCRYPT {
 	void test_Symmetric_Cipher();
+	void test12();
+	void test13();
 }
 
 namespace AUX_TEST {
@@ -47,4 +47,7 @@ namespace OPENSSL_AES_ECB_TEST {
 
 namespace INTEROP_TEST_EAX {
 	void test1();
+	void test2();
+	void test3();
+	void test4();
 }

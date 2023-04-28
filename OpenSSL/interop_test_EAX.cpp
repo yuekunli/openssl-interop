@@ -1,13 +1,13 @@
 #include<iostream>
-#include<Windows.h>
 
+typedef unsigned char byte;
 
-namespace ADAPTIVA_OPENSSL {
+namespace BYTE_BUFFERIZED_OPENSSL {
 	byte* eax_encrypt(byte* data, int data_len, byte* key, int key_size, byte* iv, int iv_size);
     byte* eax_decrypt(byte* data, int data_len, byte* key, int key_size, byte* iv, int iv_size);
 }
 
-namespace ADAPTIVA_CRYPTOPP {
+namespace BYTE_BUFFERIZED_CRYPTOPP {
     byte* eax_encrypt(byte* data, int data_len, byte* key, int key_size, byte* iv, int iv_size);
     byte* eax_decrypt(byte* data, int data_len, byte* key, int key_size, byte* iv, int iv_size);
 }
@@ -57,9 +57,9 @@ namespace INTEROP_TEST_EAX {
             0xD5, 0x56, 0xAF, 0x1A, 0x63, 0xFC, 0x95, 0x86
 		};
 
-		byte* ciphertext_and_tag = ADAPTIVA_OPENSSL::eax_encrypt((byte*)plaintext, strlen(plaintext)+1, key, 16, iv, 256);
+		byte* ciphertext_and_tag = BYTE_BUFFERIZED_OPENSSL::eax_encrypt((byte*)plaintext, strlen(plaintext)+1, key, 16, iv, 256);
         
-        byte* recovered_plaintext = ADAPTIVA_OPENSSL::eax_decrypt(ciphertext_and_tag, strlen(plaintext) + 1 + 16, key, 16, iv, 256);
+        byte* recovered_plaintext = BYTE_BUFFERIZED_OPENSSL::eax_decrypt(ciphertext_and_tag, strlen(plaintext) + 1 + 16, key, 16, iv, 256);
 
         std::cout << (char*)recovered_plaintext << std::endl;
 
@@ -112,9 +112,9 @@ namespace INTEROP_TEST_EAX {
             0xD5, 0x56, 0xAF, 0x1A, 0x63, 0xFC, 0x95, 0x86
         };
 
-        byte* ciphertext_and_tag = ADAPTIVA_CRYPTOPP::eax_encrypt((byte*)plaintext, strlen(plaintext) + 1, key, 16, iv, 256);
+        byte* ciphertext_and_tag = BYTE_BUFFERIZED_CRYPTOPP::eax_encrypt((byte*)plaintext, strlen(plaintext) + 1, key, 16, iv, 256);
 
-        byte* recovered_plaintext = ADAPTIVA_CRYPTOPP::eax_decrypt(ciphertext_and_tag, strlen(plaintext) + 1 + 16, key, 16, iv, 256);
+        byte* recovered_plaintext = BYTE_BUFFERIZED_CRYPTOPP::eax_decrypt(ciphertext_and_tag, strlen(plaintext) + 1 + 16, key, 16, iv, 256);
 
         std::cout << (char*)recovered_plaintext << std::endl;
 
@@ -169,9 +169,9 @@ namespace INTEROP_TEST_EAX {
             0xD5, 0x56, 0xAF, 0x1A, 0x63, 0xFC, 0x95, 0x86
         };
 
-        byte* ciphertext_and_tag = ADAPTIVA_OPENSSL::eax_encrypt((byte*)plaintext, strlen(plaintext) + 1, key, 16, iv, 256);
+        byte* ciphertext_and_tag = BYTE_BUFFERIZED_OPENSSL::eax_encrypt((byte*)plaintext, strlen(plaintext) + 1, key, 16, iv, 256);
 
-        byte* recovered_plaintext = ADAPTIVA_CRYPTOPP::eax_decrypt(ciphertext_and_tag, strlen(plaintext) + 1 + 16, key, 16, iv, 256);
+        byte* recovered_plaintext = BYTE_BUFFERIZED_CRYPTOPP::eax_decrypt(ciphertext_and_tag, strlen(plaintext) + 1 + 16, key, 16, iv, 256);
 
         std::cout << (char*)recovered_plaintext << std::endl;
 
@@ -225,9 +225,9 @@ namespace INTEROP_TEST_EAX {
             0xD5, 0x56, 0xAF, 0x1A, 0x63, 0xFC, 0x95, 0x86
         };
 
-        byte* ciphertext_and_tag = ADAPTIVA_CRYPTOPP::eax_encrypt((byte*)plaintext, strlen(plaintext) + 1, key, 16, iv, 256);
+        byte* ciphertext_and_tag = BYTE_BUFFERIZED_CRYPTOPP::eax_encrypt((byte*)plaintext, strlen(plaintext) + 1, key, 16, iv, 256);
 
-        byte* recovered_plaintext = ADAPTIVA_OPENSSL::eax_decrypt(ciphertext_and_tag, strlen(plaintext) + 1 + 16, key, 16, iv, 256);
+        byte* recovered_plaintext = BYTE_BUFFERIZED_OPENSSL::eax_decrypt(ciphertext_and_tag, strlen(plaintext) + 1 + 16, key, 16, iv, 256);
 
         std::cout << (char*)recovered_plaintext << std::endl;
 

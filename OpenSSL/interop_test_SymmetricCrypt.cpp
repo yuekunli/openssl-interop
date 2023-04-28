@@ -1,5 +1,5 @@
-#include "adaptiva_cryptopp.h"
-#include "adaptiva_openssl.h"
+#include "bytebuffer_api_cryptopp.h"
+#include "bytebuffer_api_openssl.h"
 
 #include <iostream>
 #include <sstream>
@@ -62,19 +62,19 @@ namespace INTEROP_TEST_SYMMETRICCRYPT {
 		key = (byte*)malloc(keyLen);
 
 		if (keygen == LIB::CRYPTOPP)
-			ADAPTIVA_CRYPTOPP::RngFillByteArrayRegion(key, 0, keyLen);
+			BYTE_BUFFERIZED_CRYPTOPP::RngFillByteArrayRegion(key, 0, keyLen);
 		else if (keygen == LIB::OPENSSL)
-			ADAPTIVA_OPENSSL::RngFillByteArrayRegion(key, 0, keyLen);
+			BYTE_BUFFERIZED_OPENSSL::RngFillByteArrayRegion(key, 0, keyLen);
 
 		if (encrypt_lib == LIB::CRYPTOPP)
-			encryptedBuffer = ADAPTIVA_CRYPTOPP::encryptBufferUsingJavaformat(algo, key, keyLen, (byte*)clearText, strlen(clearText) + 1, &encryptedBufferSize);
+			encryptedBuffer = BYTE_BUFFERIZED_CRYPTOPP::encryptBufferUsingJavaformat(algo, key, keyLen, (byte*)clearText, strlen(clearText) + 1, &encryptedBufferSize);
 		else if (encrypt_lib == LIB::OPENSSL)
-			encryptedBuffer = ADAPTIVA_OPENSSL::encryptBufferUsingJavaformat(algo, key, keyLen, (byte*)clearText, strlen(clearText) + 1, &encryptedBufferSize);
+			encryptedBuffer = BYTE_BUFFERIZED_OPENSSL::encryptBufferUsingJavaformat(algo, key, keyLen, (byte*)clearText, strlen(clearText) + 1, &encryptedBufferSize);
 
 		if (decrypt_lib == LIB::CRYPTOPP)
-			decryptedBuffer = ADAPTIVA_CRYPTOPP::decryptBufferUsingJavaformat(algo, key, keyLen, encryptedBuffer, encryptedBufferSize, &decryptedBufferSize);
+			decryptedBuffer = BYTE_BUFFERIZED_CRYPTOPP::decryptBufferUsingJavaformat(algo, key, keyLen, encryptedBuffer, encryptedBufferSize, &decryptedBufferSize);
 		else if (decrypt_lib == LIB::OPENSSL)
-			decryptedBuffer = ADAPTIVA_OPENSSL::decryptBufferUsingJavaformat(algo, key, keyLen, encryptedBuffer, encryptedBufferSize, &decryptedBufferSize);
+			decryptedBuffer = BYTE_BUFFERIZED_OPENSSL::decryptBufferUsingJavaformat(algo, key, keyLen, encryptedBuffer, encryptedBufferSize, &decryptedBufferSize);
 
 		if (strcmp(clearText, (char*)decryptedBuffer) == 0)
 		{
@@ -132,15 +132,15 @@ namespace INTEROP_TEST_SYMMETRICCRYPT {
 		int keyLen = 16;
 		key = (byte*)malloc(keyLen);
 
-		ADAPTIVA_CRYPTOPP::RngFillByteArrayRegion(key, 0, keyLen);
+		BYTE_BUFFERIZED_CRYPTOPP::RngFillByteArrayRegion(key, 0, keyLen);
 
 		byte* encryptedBuffer = NULL;
 		int encryptedBufferSize = 0;
-		encryptedBuffer = ADAPTIVA_CRYPTOPP::encryptBufferUsingJavaformat(1, key, keyLen, (byte*)clearText2, strlen(clearText2) + 1, &encryptedBufferSize);
+		encryptedBuffer = BYTE_BUFFERIZED_CRYPTOPP::encryptBufferUsingJavaformat(1, key, keyLen, (byte*)clearText2, strlen(clearText2) + 1, &encryptedBufferSize);
 
 		byte* decryptedBuffer = NULL;
 		int decryptedBufferSize;
-		decryptedBuffer = ADAPTIVA_OPENSSL::decryptBufferUsingJavaformat(1, key, keyLen, encryptedBuffer, encryptedBufferSize, &decryptedBufferSize);
+		decryptedBuffer = BYTE_BUFFERIZED_OPENSSL::decryptBufferUsingJavaformat(1, key, keyLen, encryptedBuffer, encryptedBufferSize, &decryptedBufferSize);
 
 		std::cout << decryptedBuffer << std::endl;
 
@@ -158,15 +158,15 @@ namespace INTEROP_TEST_SYMMETRICCRYPT {
 		int keyLen = 16;
 		key = (byte*)malloc(keyLen);
 
-		ADAPTIVA_CRYPTOPP::RngFillByteArrayRegion(key, 0, keyLen);
+		BYTE_BUFFERIZED_CRYPTOPP::RngFillByteArrayRegion(key, 0, keyLen);
 
 		byte* encryptedBuffer = NULL;
 		int encryptedBufferSize = 0;
-		encryptedBuffer = ADAPTIVA_OPENSSL::encryptBufferUsingJavaformat(1, key, keyLen, (byte*)clearText, strlen(clearText) + 1, &encryptedBufferSize);
+		encryptedBuffer = BYTE_BUFFERIZED_OPENSSL::encryptBufferUsingJavaformat(1, key, keyLen, (byte*)clearText, strlen(clearText) + 1, &encryptedBufferSize);
 
 		byte* decryptedBuffer = NULL;
 		int decryptedBufferSize;
-		decryptedBuffer = ADAPTIVA_OPENSSL::decryptBufferUsingJavaformat(1, key, keyLen, encryptedBuffer, encryptedBufferSize, &decryptedBufferSize);
+		decryptedBuffer = BYTE_BUFFERIZED_OPENSSL::decryptBufferUsingJavaformat(1, key, keyLen, encryptedBuffer, encryptedBufferSize, &decryptedBufferSize);
 
 		std::cout << decryptedBuffer << std::endl;
 
@@ -184,15 +184,15 @@ namespace INTEROP_TEST_SYMMETRICCRYPT {
 		int keyLen = 16;
 		key = (byte*)malloc(keyLen);
 
-		ADAPTIVA_CRYPTOPP::RngFillByteArrayRegion(key, 0, keyLen);
+		BYTE_BUFFERIZED_CRYPTOPP::RngFillByteArrayRegion(key, 0, keyLen);
 
 		byte* encryptedBuffer = NULL;
 		int encryptedBufferSize = 0;
-		encryptedBuffer = ADAPTIVA_OPENSSL::encryptBufferUsingJavaformat(1, key, keyLen, (byte*)clearText2, strlen(clearText2) + 1, &encryptedBufferSize);
+		encryptedBuffer = BYTE_BUFFERIZED_OPENSSL::encryptBufferUsingJavaformat(1, key, keyLen, (byte*)clearText2, strlen(clearText2) + 1, &encryptedBufferSize);
 
 		byte* decryptedBuffer = NULL;
 		int decryptedBufferSize;
-		decryptedBuffer = ADAPTIVA_CRYPTOPP::decryptBufferUsingJavaformat(1, key, keyLen, encryptedBuffer, encryptedBufferSize, &decryptedBufferSize);
+		decryptedBuffer = BYTE_BUFFERIZED_CRYPTOPP::decryptBufferUsingJavaformat(1, key, keyLen, encryptedBuffer, encryptedBufferSize, &decryptedBufferSize);
 
 		std::cout << decryptedBuffer << std::endl;
 
@@ -210,15 +210,15 @@ namespace INTEROP_TEST_SYMMETRICCRYPT {
 		int keyLen = 16;
 		key = (byte*)malloc(keyLen);
 
-		ADAPTIVA_CRYPTOPP::RngFillByteArrayRegion(key, 0, keyLen);
+		BYTE_BUFFERIZED_CRYPTOPP::RngFillByteArrayRegion(key, 0, keyLen);
 
 		byte* encryptedBuffer = NULL;
 		int encryptedBufferSize = 0;
-		encryptedBuffer = ADAPTIVA_CRYPTOPP::encryptBufferUsingJavaformat(3, key, keyLen, (byte*)clearText2, strlen(clearText2) + 1, &encryptedBufferSize);
+		encryptedBuffer = BYTE_BUFFERIZED_CRYPTOPP::encryptBufferUsingJavaformat(3, key, keyLen, (byte*)clearText2, strlen(clearText2) + 1, &encryptedBufferSize);
 
 		byte* decryptedBuffer = NULL;
 		int decryptedBufferSize;
-		decryptedBuffer = ADAPTIVA_CRYPTOPP::decryptBufferUsingJavaformat(3, key, keyLen, encryptedBuffer, encryptedBufferSize, &decryptedBufferSize);
+		decryptedBuffer = BYTE_BUFFERIZED_CRYPTOPP::decryptBufferUsingJavaformat(3, key, keyLen, encryptedBuffer, encryptedBufferSize, &decryptedBufferSize);
 
 		std::cout << decryptedBuffer << std::endl;
 
@@ -236,15 +236,15 @@ namespace INTEROP_TEST_SYMMETRICCRYPT {
 		int keyLen = 16;
 		key = (byte*)malloc(keyLen);
 
-		ADAPTIVA_CRYPTOPP::RngFillByteArrayRegion(key, 0, keyLen);
+		BYTE_BUFFERIZED_CRYPTOPP::RngFillByteArrayRegion(key, 0, keyLen);
 
 		byte* encryptedBuffer = NULL;
 		int encryptedBufferSize = 0;
-		encryptedBuffer = ADAPTIVA_OPENSSL::encryptBufferUsingJavaformat(3, key, keyLen, (byte*)clearText2, strlen(clearText2) + 1, &encryptedBufferSize);
+		encryptedBuffer = BYTE_BUFFERIZED_OPENSSL::encryptBufferUsingJavaformat(3, key, keyLen, (byte*)clearText2, strlen(clearText2) + 1, &encryptedBufferSize);
 
 		byte* decryptedBuffer = NULL;
 		int decryptedBufferSize;
-		decryptedBuffer = ADAPTIVA_OPENSSL::decryptBufferUsingJavaformat(3, key, keyLen, encryptedBuffer, encryptedBufferSize, &decryptedBufferSize);
+		decryptedBuffer = BYTE_BUFFERIZED_OPENSSL::decryptBufferUsingJavaformat(3, key, keyLen, encryptedBuffer, encryptedBufferSize, &decryptedBufferSize);
 
 		std::cout << decryptedBuffer << std::endl;
 
@@ -262,15 +262,15 @@ namespace INTEROP_TEST_SYMMETRICCRYPT {
 		int keyLen = 16;
 		key = (byte*)malloc(keyLen);
 
-		ADAPTIVA_CRYPTOPP::RngFillByteArrayRegion(key, 0, keyLen);
+		BYTE_BUFFERIZED_CRYPTOPP::RngFillByteArrayRegion(key, 0, keyLen);
 
 		byte* encryptedBuffer = NULL;
 		int encryptedBufferSize = 0;
-		encryptedBuffer = ADAPTIVA_CRYPTOPP::encryptBufferUsingJavaformat(3, key, keyLen, (byte*)clearText2, strlen(clearText2) + 1, &encryptedBufferSize);
+		encryptedBuffer = BYTE_BUFFERIZED_CRYPTOPP::encryptBufferUsingJavaformat(3, key, keyLen, (byte*)clearText2, strlen(clearText2) + 1, &encryptedBufferSize);
 
 		byte* decryptedBuffer = NULL;
 		int decryptedBufferSize;
-		decryptedBuffer = ADAPTIVA_OPENSSL::decryptBufferUsingJavaformat(3, key, keyLen, encryptedBuffer, encryptedBufferSize, &decryptedBufferSize);
+		decryptedBuffer = BYTE_BUFFERIZED_OPENSSL::decryptBufferUsingJavaformat(3, key, keyLen, encryptedBuffer, encryptedBufferSize, &decryptedBufferSize);
 
 		std::cout << decryptedBuffer << std::endl;
 
@@ -288,15 +288,15 @@ namespace INTEROP_TEST_SYMMETRICCRYPT {
 		int keyLen = 16;
 		key = (byte*)malloc(keyLen);
 
-		ADAPTIVA_OPENSSL::RngFillByteArrayRegion(key, 0, keyLen);
+		BYTE_BUFFERIZED_OPENSSL::RngFillByteArrayRegion(key, 0, keyLen);
 
 		byte* encryptedBuffer = NULL;
 		int encryptedBufferSize = 0;
-		encryptedBuffer = ADAPTIVA_OPENSSL::encryptBufferUsingJavaformat(3, key, keyLen, (byte*)clearText, strlen(clearText) + 1, &encryptedBufferSize);
+		encryptedBuffer = BYTE_BUFFERIZED_OPENSSL::encryptBufferUsingJavaformat(3, key, keyLen, (byte*)clearText, strlen(clearText) + 1, &encryptedBufferSize);
 
 		byte* decryptedBuffer = NULL;
 		int decryptedBufferSize;
-		decryptedBuffer = ADAPTIVA_CRYPTOPP::decryptBufferUsingJavaformat(3, key, keyLen, encryptedBuffer, encryptedBufferSize, &decryptedBufferSize);
+		decryptedBuffer = BYTE_BUFFERIZED_CRYPTOPP::decryptBufferUsingJavaformat(3, key, keyLen, encryptedBuffer, encryptedBufferSize, &decryptedBufferSize);
 
 		std::cout << decryptedBuffer << std::endl;
 
@@ -314,15 +314,15 @@ namespace INTEROP_TEST_SYMMETRICCRYPT {
 		int keyLen = 24;
 		key = (byte*)malloc(keyLen);
 
-		ADAPTIVA_CRYPTOPP::RngFillByteArrayRegion(key, 0, keyLen);
+		BYTE_BUFFERIZED_CRYPTOPP::RngFillByteArrayRegion(key, 0, keyLen);
 
 		byte* encryptedBuffer = NULL;
 		int encryptedBufferSize = 0;
-		encryptedBuffer = ADAPTIVA_CRYPTOPP::encryptBufferUsingJavaformat(4, key, keyLen, (byte*)clearText2, strlen(clearText2) + 1, &encryptedBufferSize);
+		encryptedBuffer = BYTE_BUFFERIZED_CRYPTOPP::encryptBufferUsingJavaformat(4, key, keyLen, (byte*)clearText2, strlen(clearText2) + 1, &encryptedBufferSize);
 
 		byte* decryptedBuffer = NULL;
 		int decryptedBufferSize;
-		decryptedBuffer = ADAPTIVA_CRYPTOPP::decryptBufferUsingJavaformat(4, key, keyLen, encryptedBuffer, encryptedBufferSize, &decryptedBufferSize);
+		decryptedBuffer = BYTE_BUFFERIZED_CRYPTOPP::decryptBufferUsingJavaformat(4, key, keyLen, encryptedBuffer, encryptedBufferSize, &decryptedBufferSize);
 
 		std::cout << decryptedBuffer << std::endl;
 
@@ -340,15 +340,15 @@ namespace INTEROP_TEST_SYMMETRICCRYPT {
 		int keyLen = 24;
 		key = (byte*)malloc(keyLen);
 
-		ADAPTIVA_OPENSSL::RngFillByteArrayRegion(key, 0, keyLen);
+		BYTE_BUFFERIZED_OPENSSL::RngFillByteArrayRegion(key, 0, keyLen);
 
 		byte* encryptedBuffer = NULL;
 		int encryptedBufferSize = 0;
-		encryptedBuffer = ADAPTIVA_OPENSSL::encryptBufferUsingJavaformat(4, key, keyLen, (byte*)clearText2, strlen(clearText2) + 1, &encryptedBufferSize);
+		encryptedBuffer = BYTE_BUFFERIZED_OPENSSL::encryptBufferUsingJavaformat(4, key, keyLen, (byte*)clearText2, strlen(clearText2) + 1, &encryptedBufferSize);
 
 		byte* decryptedBuffer = NULL;
 		int decryptedBufferSize;
-		decryptedBuffer = ADAPTIVA_OPENSSL::decryptBufferUsingJavaformat(4, key, keyLen, encryptedBuffer, encryptedBufferSize, &decryptedBufferSize);
+		decryptedBuffer = BYTE_BUFFERIZED_OPENSSL::decryptBufferUsingJavaformat(4, key, keyLen, encryptedBuffer, encryptedBufferSize, &decryptedBufferSize);
 
 		std::cout << decryptedBuffer << std::endl;
 
@@ -366,15 +366,15 @@ namespace INTEROP_TEST_SYMMETRICCRYPT {
 		int keyLen = 24;
 		key = (byte*)malloc(keyLen);
 
-		ADAPTIVA_OPENSSL::RngFillByteArrayRegion(key, 0, keyLen);
+		BYTE_BUFFERIZED_OPENSSL::RngFillByteArrayRegion(key, 0, keyLen);
 
 		byte* encryptedBuffer = NULL;
 		int encryptedBufferSize = 0;
-		encryptedBuffer = ADAPTIVA_OPENSSL::encryptBufferUsingJavaformat(4, key, keyLen, (byte*)clearText, strlen(clearText) + 1, &encryptedBufferSize);
+		encryptedBuffer = BYTE_BUFFERIZED_OPENSSL::encryptBufferUsingJavaformat(4, key, keyLen, (byte*)clearText, strlen(clearText) + 1, &encryptedBufferSize);
 
 		byte* decryptedBuffer = NULL;
 		int decryptedBufferSize;
-		decryptedBuffer = ADAPTIVA_CRYPTOPP::decryptBufferUsingJavaformat(4, key, keyLen, encryptedBuffer, encryptedBufferSize, &decryptedBufferSize);
+		decryptedBuffer = BYTE_BUFFERIZED_CRYPTOPP::decryptBufferUsingJavaformat(4, key, keyLen, encryptedBuffer, encryptedBufferSize, &decryptedBufferSize);
 
 		std::cout << decryptedBuffer << std::endl;
 
@@ -392,15 +392,15 @@ namespace INTEROP_TEST_SYMMETRICCRYPT {
 		int keyLen = 24;
 		key = (byte*)malloc(keyLen);
 
-		ADAPTIVA_OPENSSL::RngFillByteArrayRegion(key, 0, keyLen);
+		BYTE_BUFFERIZED_OPENSSL::RngFillByteArrayRegion(key, 0, keyLen);
 
 		byte* encryptedBuffer = NULL;
 		int encryptedBufferSize = 0;
-		encryptedBuffer = ADAPTIVA_CRYPTOPP::encryptBufferUsingJavaformat(4, key, keyLen, (byte*)clearText2, strlen(clearText2) + 1, &encryptedBufferSize);
+		encryptedBuffer = BYTE_BUFFERIZED_CRYPTOPP::encryptBufferUsingJavaformat(4, key, keyLen, (byte*)clearText2, strlen(clearText2) + 1, &encryptedBufferSize);
 
 		byte* decryptedBuffer = NULL;
 		int decryptedBufferSize;
-		decryptedBuffer = ADAPTIVA_OPENSSL::decryptBufferUsingJavaformat(4, key, keyLen, encryptedBuffer, encryptedBufferSize, &decryptedBufferSize);
+		decryptedBuffer = BYTE_BUFFERIZED_OPENSSL::decryptBufferUsingJavaformat(4, key, keyLen, encryptedBuffer, encryptedBufferSize, &decryptedBufferSize);
 
 		std::cout << decryptedBuffer << std::endl;
 

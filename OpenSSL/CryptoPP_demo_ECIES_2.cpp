@@ -54,7 +54,7 @@ using CryptoPP::PK_Encryptor;
 using CryptoPP::PK_Decryptor;
 using CryptoPP::g_nullNameValuePairs;
 
-namespace Test_ECIES_2 {
+namespace CRYPTOPP_DEMO {
 
     void PrintPrivateKey(const DL_PrivateKey_EC<ECP>& key, ostream& out = cout);
     void PrintPublicKey(const DL_PublicKey_EC<ECP>& key, ostream& out = cout);
@@ -67,7 +67,7 @@ namespace Test_ECIES_2 {
 
     static const string message("Now is the time for all good men to come to the aide of their country.");
 
-    void Run_Test_ECIES_2()
+    void demo_ECIES_2()
     {
         AutoSeededRandomPool prng;
 
