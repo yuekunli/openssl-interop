@@ -1,4 +1,6 @@
 #include "under_test.h"
+#include <iostream>
+#include <string>
 
 int main()
 {
@@ -23,5 +25,16 @@ int main()
 	//OPENSSL_AES_ECB_TEST::test4();
 	//OPENSSL_AES_ECB_TEST::test5();
 
-	INTEROP_TEST_EAX::test1();
+	//INTEROP_TEST_EAX::test3();
+	//INTEROP_TEST_EAX::test4();
+
+	INTEROP_TEST_SYMMETRICCRYPT::test13();
+
+	/*
+	char b[] = "breakfast";
+
+	std::string a(b, 10);
+
+	std::cout << a.size() << "   " << a << std::endl;
+	*/
 }

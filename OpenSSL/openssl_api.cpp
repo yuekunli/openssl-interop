@@ -23,6 +23,7 @@
 
 // Windows hearder
 #include <Windows.h>
+#include <winsock.h>
 
 
 typedef unsigned char byte;
@@ -51,12 +52,13 @@ namespace ADAPTIVA_OPENSSL {
 
 
 #define com_adaptiva_fips_CryptoConstants_BLOCK_SIZE_AES256_CBC  16
+#define com_adaptiva_fips_CryptoConstants_BLOCK_SIZE_AES256_EAX  16
 #define com_adaptiva_fips_CryptoConstants_BLOCK_SIZE_AES256_GCM  16
 #define com_adaptiva_fips_CryptoConstants_BLOCK_SIZE_TRIPLE_DES_CBC 8
 
 
 #define com_adaptiva_fips_CryptoConstants_IV_LENGTH_AES256_CBC 16
-#define com_adaptiva_fips_CryptoConstants_IV_LENGTH_AES256_EAX 0   // Java code has this macro as 256, OpenSSL has no EAX implementation
+#define com_adaptiva_fips_CryptoConstants_IV_LENGTH_AES256_EAX 256
 #define com_adaptiva_fips_CryptoConstants_IV_LENGTH_AES256_GCM 128 // Java code has this macro set to 256
                                                                     // OpenSSL can support up to 128 bytes IV for GCM
                                                                     // Crypto++ can support up to 2^64 - 1 bits IV
@@ -98,6 +100,12 @@ void* memdup(void* p, int l)
     memcpy(out, p, l);
     return out;
 }
+
+
+// forwar declaration:
+
+byte* eax_encrypt(byte* data, int data_len, byte* key, int key_size, byte* iv, int iv_size);
+byte* eax_decrypt(byte* data, int data_len, byte* key, int key_size, byte* iv, int iv_size);
 
 
 
@@ -667,38 +675,38 @@ SymmetricCipher *CipherInitialize(int nAlgo, bool fEncrypt)
 
     pSymCipher = (SymmetricCipher*)OPENSSL_zalloc(sizeof(SymmetricCipher));
 
-    //char const *pCipherName[] = {"AEC-256-CBC", "AES-256-GCM", "DES-EDE3-CBC"};
+    //char const *pCipherName[] = {"AEC-256-CBC", "AES-256-EAX", "AES-256-GCM", "DES-EDE3-CBC"};
 
-    char const* pCipherName[] = { "AES-128-CBC", "UNDEFINED-AES-EAX", "AES-128-GCM", "DES-EDE3-CBC" };
+    char const* pCipherName[] = { "AES-128-CBC", "AES-128-EAX", "AES-128-GCM", "DES-EDE3-CBC" };
 
     char const *pChosen = pCipherName[0];
 
-        switch (nAlgo)
-        {
-            case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_AES256_CBC:
-            pChosen = pCipherName[0];
-            pSymCipher->nBlockSize = com_adaptiva_fips_CryptoConstants_BLOCK_SIZE_AES256_CBC;
-            break;
+    switch (nAlgo)
+    {
+        case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_AES256_CBC:
+        pChosen = pCipherName[0];
+        pSymCipher->nBlockSize = com_adaptiva_fips_CryptoConstants_BLOCK_SIZE_AES256_CBC;
+        break;
             
-            case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_AES256_EAX:
-            break;
+        case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_AES256_EAX:
+        break;
 
-            case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_AES256_GCM:
-            pChosen = pCipherName[2];
-            pSymCipher->nBlockSize = com_adaptiva_fips_CryptoConstants_BLOCK_SIZE_AES256_GCM;
-            break;
+        case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_AES256_GCM:
+        pChosen = pCipherName[2];
+        pSymCipher->nBlockSize = com_adaptiva_fips_CryptoConstants_BLOCK_SIZE_AES256_GCM;
+        break;
 
-            case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_TRIPLE_DES_CBC:
-            pChosen = pCipherName[3];
-            pSymCipher->nBlockSize = com_adaptiva_fips_CryptoConstants_BLOCK_SIZE_TRIPLE_DES_CBC;
-            break;
-        }
+        case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_TRIPLE_DES_CBC:
+        pChosen = pCipherName[3];
+        pSymCipher->nBlockSize = com_adaptiva_fips_CryptoConstants_BLOCK_SIZE_TRIPLE_DES_CBC;
+        break;
+    }
 
-        pSymCipher->fEncrypt = fEncrypt;
-        pSymCipher->nAlgorithm = nAlgo;
-        pSymCipher->pCtx = EVP_CIPHER_CTX_new();
-        pSymCipher->pImplement = EVP_CIPHER_fetch(/*libctx*/ NULL, pChosen, /*property queue*/ NULL);
-        pSymCipher->pBIOInput = BIO_new(BIO_s_mem());
+    pSymCipher->fEncrypt = fEncrypt;
+    pSymCipher->nAlgorithm = nAlgo;
+    pSymCipher->pCtx = EVP_CIPHER_CTX_new();
+    pSymCipher->pImplement = EVP_CIPHER_fetch(/*libctx*/ NULL, pChosen, /*property queue*/ NULL);
+    pSymCipher->pBIOInput = BIO_new(BIO_s_mem());
 
     return pSymCipher;
 }
@@ -851,6 +859,31 @@ bool CipherEndInput(SymmetricCipher* pSymCipher)
     return true;
 }
 
+
+
+static int CipherRetrieveEncryptionOutput_AES_EAX(SymmetricCipher* pSymCipher, byte* pOutput, int nOffset, int nLength)
+{
+    byte* pAlgorithmOutput;
+
+    if (nLength < pSymCipher->nBytesToBeInjected + pSymCipher->nInputSize + 16)
+    {
+        LOG3(logMessage, "WARN", "provided output buffer is shorter than minimum required");
+        return 0;
+    }
+
+    pAlgorithmOutput = eax_encrypt(pSymCipher->psInput, pSymCipher->nInputSize, pSymCipher->pKey, pSymCipher->nKeyLength, pSymCipher->pInitialVector, pSymCipher->nInitialVectorLength);
+
+    if (pSymCipher->nBytesToBeInjected > 0)
+        memcpy(pOutput + nOffset, pSymCipher->pBytesToBeInjected, pSymCipher->nBytesToBeInjected);
+
+    memcpy(pOutput + nOffset + pSymCipher->nBytesToBeInjected, pAlgorithmOutput, pSymCipher->nInputSize + 16);
+
+    OPENSSL_free(pAlgorithmOutput);
+
+    return pSymCipher->nBytesToBeInjected + pSymCipher->nInputSize + 16;
+}
+
+
 /*
 *                             nLength
 *      |------------------------------------------------------|
@@ -893,6 +926,9 @@ static int CipherRetrieveEncryptionOutput_AES_GCM(SymmetricCipher* pSymCipher, b
 
     memcpy(pOutput + nOffset + pSymCipher->nBytesToBeInjected, pAlgorithmOutput, pSymCipher->nInputSize);
     memcpy(pOutput + nOffset + pSymCipher->nBytesToBeInjected + pSymCipher->nInputSize, tag, sizeof(tag));
+
+    OPENSSL_free(pAlgorithmOutput);
+
     return pSymCipher->nBytesToBeInjected + pSymCipher->nInputSize + sizeof(tag);
 }
 
@@ -931,6 +967,30 @@ static int CipherRetrieveEncryptionOutput_CBC(SymmetricCipher* pSymCipher, byte*
     memcpy(pOutput + nOffset + nInject, pAlgorithmOutput, nCopy);
     return nCopy;
 }
+
+static int CipherRetrieveDecryptionOutput_AES_EAX(SymmetricCipher* pSymCipher, byte* pOutput, int nOffset, int nLength)
+{    
+    int nInject = 0, nCopy = 0;
+    int nCipherTextSize = pSymCipher->nInputSize - 16;
+
+    byte* pAlgorithmOutput = eax_decrypt(pSymCipher->psInput, pSymCipher->nInputSize, pSymCipher->pKey, pSymCipher->nKeyLength, pSymCipher->pInitialVector, pSymCipher->nInitialVectorLength);
+
+    nInject = min(nLength, pSymCipher->nBytesToBeInjected);
+    if (nInject > 0)
+        memcpy(pOutput + nOffset, pSymCipher->pBytesToBeInjected, nInject);
+
+    nCopy = 0;
+    if (nInject < nLength)
+    {
+        nCopy = min(nLength - nInject, nCipherTextSize - pSymCipher->nBytesToBeSkipped);
+        memcpy(pOutput + nOffset + nInject, pAlgorithmOutput + pSymCipher->nBytesToBeSkipped, nCopy);
+    }
+
+    OPENSSL_free(pAlgorithmOutput);
+
+    return nInject + nCopy;
+}
+
 
 // If there were injected bytes in front of the output of encryption, the caller of this function should strip off those injected bytes
 static int CipherRetrieveDecryptionOutput_AES_GCM(SymmetricCipher* pSymCipher, byte* pOutput, int nOffset, int nLength)
@@ -976,6 +1036,9 @@ static int CipherRetrieveDecryptionOutput_AES_GCM(SymmetricCipher* pSymCipher, b
         nCopy = min(nLength - nInject, nCipherTextSize - pSymCipher->nBytesToBeSkipped);
         memcpy(pOutput + nOffset + nInject, pAlgorithmOutput + pSymCipher->nBytesToBeSkipped, nCopy);
     }
+
+    OPENSSL_free(pAlgorithmOutput);
+    
     return nInject + nCopy;
 }
 
@@ -1031,6 +1094,8 @@ int CipherRetrieveOutput(SymmetricCipher *pSymCipher, byte *pOutput, int nOffset
 
         case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_AES256_GCM:
             return CipherRetrieveEncryptionOutput_AES_GCM(pSymCipher, pOutput, nOffset, nLength);
+        case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_AES256_EAX:
+            return CipherRetrieveEncryptionOutput_AES_EAX(pSymCipher, pOutput, nOffset, nLength);
         }
     }
     else
@@ -1043,6 +1108,9 @@ int CipherRetrieveOutput(SymmetricCipher *pSymCipher, byte *pOutput, int nOffset
 
             case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_AES256_GCM:
                 return CipherRetrieveDecryptionOutput_AES_GCM(pSymCipher, pOutput, nOffset, nLength);
+
+            case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_AES256_EAX:
+                return CipherRetrieveDecryptionOutput_AES_EAX(pSymCipher, pOutput, nOffset, nLength);
         }
     }
     return -1;
@@ -1078,8 +1146,6 @@ int getEncryptedBufferSizeUsingJavaformat(int nEncrypAlog, int nInputSize)
             return nInputSize + 10 + com_adaptiva_fips_CryptoConstants_BLOCK_SIZE_AES256_CBC - ((nInputSize + 4) % com_adaptiva_fips_CryptoConstants_BLOCK_SIZE_AES256_CBC);
     
         case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_AES256_EAX:
-            return 0;
-
         case com_adaptiva_fips_CyrptoConstants_ENCRYPTION_ALGORITHM_AES256_GCM:
             return nInputSize + 10 + com_adaptiva_fips_CryptoConstants_BLOCK_SIZE_AES256_GCM;
             // counter mode, cipher text length = plain text length, default MAC tag length is one AES block size
@@ -1094,7 +1160,8 @@ int getEncryptedBufferSizeUsingJavaformat(int nEncrypAlog, int nInputSize)
 * "nInputSize" is the size of the buffer produced by "encryptBufferUsingJavaformat"
 * It equals 1(key type) + 1(algo) + 4(IV material) + bytes spat out by encryption algorithm
 * 
-* In case of GCM, "bytes spat out by the encryption algorithm" includes cipher text and MAC tag
+* In case of counter mode with authentication (EAX and GCM),
+* "bytes spat out by the encryption algorithm" includes cipher text and MAC tag
 * because I concatenate the tag to the end of the cipher text.
 * 
 * So nInputsize - 10 is either 
@@ -1104,7 +1171,7 @@ int getEncryptedBufferSizeUsingJavaformat(int nEncrypAlog, int nInputSize)
 * salt is always included because salt is encrypted, so salt should be fed to decryption algorithm
 * 
 * 
-* So this buffer size is almost always an over estimation (except in CBC mode where there is no padding needed)
+* So this buffer size is almost always an over estimation (except in CBC mode and it so happens there is no padding needed)
 * So the decryption API should return the true size of the decrypted plain text.
 * If the decrypted plain text is ASCII string, the size should include the terminating '\0'
 */
@@ -1122,11 +1189,13 @@ int getDecryptedBufferSizeUsingJavaformat(int nInputSize)
 
                                                                 \____ nDataBufferLength ___/
 
-                                         \____________________________ cipher output _____________________/ (maybe longer because of padding)
+                                         \_________________ output from encryption algorithm _____________/ (maybe longer because of padding)
 
-*                                        \_________________________ nEncryptedDataSize ___________________/ 
+*                                        \_________________________ nEncryptedDataSize ___________________/ (algorithm returned)
 * 
-*    \_________________________________________ nEncryptedBufferSize _____________________________________/
+*    \_________________________________________ nEncryptedBufferSize _____________________________________/ (artificially calculated and is precise)
+* 
+* As the encryptor, we can calculate the precise length of padding.
 */
 byte *encryptBufferUsingJavaformat(int encrypAlgo, byte *key, int nKeyLength, byte *pDataBuffer, int nDataBufferLength, int *pnEncryptedBufferSize)
 {
@@ -1235,19 +1304,22 @@ byte *encryptBufferUsingJavaformat(int encrypAlgo, byte *key, int nKeyLength, by
 
 /*
 *    |___|  |___|  |___________________|  |___________________|  |_______________________________| |________|
-*    k type  algo   random (generate IV)         salt                        plain text               pad
+*    k type  algo   random (generate IV)         salt                        plain text             pad or mac
 * 
 *    \__________________________________________ nDataBufferLength _________________________________________/
 * 
 *    \____________________________________________ pDataBuffer _____________________________________________/
 * 
-*                                         \__________________________ cipher input _________________________/
+*                                         \________________  input to decryption algorithm _________________/
 * 
 *                                                               \____________ pDecryptedBuffer _____________/
 * 
-*                                                               \__________ nDecryptedBufferSize ___________/
+*                                                               \__________ nDecryptedBufferSize ___________/  (artificially calculated: entirty - 10)
 * 
-*                                                               \______ nDecryptedDataSize _____/
+*                                                               \______ nDecryptedDataSize _____/  (algorithm returned)
+* 
+* In CBC, we know the precise length of plain text + pad, but don't know the precise length of just plain text before running the decryption.
+* In Counter mode, we know the precise length of plain text + mac, and can also calculate the precise length of plain text because mac length should be known
 */
 byte *decryptBufferUsingJavaformat(int algo, byte *key, int nKeyLength, byte *pDataBuffer, int nDataBufferLength, int *pnDecryptedBufferSize)
 {
@@ -3490,9 +3562,15 @@ byte* cmac_with_prefix(byte* data, int data_len, int prefix, byte* key, int key_
     size_t t = sizeof(prefix);
     size_t total = data_len + 16;
     byte* input = (byte*)OPENSSL_zalloc(total);
+    
+    //memset(input, 0, 16);
+    //memcpy(input + 15, (byte*)&prefix, 1);
+
+    u_long big_endi_prefix = htonl(prefix);
 
     memset(input, 0, 16 - t);
-    memcpy(input + 16 - t, (byte*)&prefix, t);
+    memcpy(input + 16 - t, (void*)&big_endi_prefix, t);
+
     if (data_len > 0)
         memcpy(input + 16, data, data_len);
 
