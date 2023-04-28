@@ -3250,4 +3250,319 @@ byte* DsaDecryptBuffer(byte* pPrivateKey, int nPrivateKeyLength, byte* pDataBuff
     return eciesDecryptBuffer(pPrivateKey, nPrivateKeyLength, pDataBuffer, nDataBufferLength, pnDecryptedBufferSize);
 }
 
+
+// =============
+//   CMAC
+// =============
+
+byte* generateCMAC_3(byte* plaintext, int plaintextLength, byte* key, int key_size, int* tag_size)
+{
+    EVP_MAC* cmac = NULL;
+    EVP_MAC_CTX* ctx = NULL;
+    byte* tag = NULL;
+    size_t out_len = 0;
+    OSSL_PARAM params[4];
+    OSSL_PARAM* p = params;
+    char cipher_name[] = "AES-128-CBC";
+
+    cmac = EVP_MAC_fetch(NULL/*lib context*/, "CMAC", NULL/*property queue*/);
+
+    ctx = EVP_MAC_CTX_new(cmac);
+
+    *p++ = OSSL_PARAM_construct_utf8_string(OSSL_MAC_PARAM_CIPHER, cipher_name, sizeof(cipher_name));
+
+    *p = OSSL_PARAM_construct_end();
+
+    EVP_MAC_init(ctx, key, key_size, params);
+
+    EVP_MAC_update(ctx, plaintext, plaintextLength);
+
+    EVP_MAC_final(ctx, NULL, &out_len, 0);
+
+    tag = (byte*)OPENSSL_zalloc(out_len);
+
+    EVP_MAC_final(ctx, tag, &out_len, out_len);
+
+    *tag_size = (int)out_len;
+
+    EVP_MAC_CTX_free(ctx);
+    EVP_MAC_free(cmac);
+
+    return tag;
+}
+
+
+bool verifyCMAC_3(byte* plaintext, int plaintextLength, byte* key, int key_size, byte* tag_to_be_verified, int tag_size)
+{
+    EVP_MAC* cmac = NULL;
+    EVP_MAC_CTX* ctx = NULL;
+    byte* tag = NULL;
+    size_t out_len = 0;
+    OSSL_PARAM params[4];
+    OSSL_PARAM* p = params;
+    char cipher_name[] = "AES-128-CBC";
+
+    cmac = EVP_MAC_fetch(NULL/*lib context*/, "CMAC", NULL/*property queue*/);
+
+    ctx = EVP_MAC_CTX_new(cmac);
+
+    *p++ = OSSL_PARAM_construct_utf8_string(OSSL_MAC_PARAM_CIPHER, cipher_name, sizeof(cipher_name));
+
+    *p = OSSL_PARAM_construct_end();
+
+    EVP_MAC_init(ctx, key, key_size, params);
+
+    EVP_MAC_update(ctx, plaintext, plaintextLength);
+
+    EVP_MAC_final(ctx, NULL, &out_len, 0);
+
+    tag = (byte*)OPENSSL_zalloc(out_len);
+
+    EVP_MAC_final(ctx, tag, &out_len, out_len);
+
+    int cmp_result = CRYPTO_memcmp(tag, tag_to_be_verified, out_len);
+
+    OPENSSL_free(tag);
+    EVP_MAC_CTX_free(ctx);
+    EVP_MAC_free(cmac);
+
+    return (cmp_result == 0 && (out_len == tag_size));
+}
+
+
+// =======================
+//   AES_ECB (no padding, no chaining)
+// =======================
+
+
+byte* aes128_block_encrypt(byte* data, int data_len, byte* key)
+{
+    EVP_CIPHER* aes = NULL;
+    EVP_CIPHER_CTX* aesctx = NULL;
+
+    byte* out = (byte*)OPENSSL_zalloc(data_len);
+    int aes_len = 0;
+
+    aes = EVP_CIPHER_fetch(NULL/*lib context*/, "AES-128-ECB", NULL/*property queue*/);
+    aesctx = EVP_CIPHER_CTX_new();
+
+    EVP_EncryptInit_ex(aesctx, aes, NULL/*implementation*/, key, NULL/*iv*/);
+
+    EVP_CIPHER_CTX_set_padding(aesctx, 0);
+
+    EVP_EncryptUpdate(aesctx, out, &aes_len, data, data_len);
+
+    EVP_CIPHER_CTX_free(aesctx);
+    EVP_CIPHER_free(aes);
+    return out;
+}
+
+byte* aes128_block_decrypt(byte* data, int data_len, byte* key)
+{
+    EVP_CIPHER* aes = NULL;
+    EVP_CIPHER_CTX* aesctx = NULL;
+
+    byte* out = (byte*)OPENSSL_zalloc(data_len);
+    int aes_len = 0;
+
+    aes = EVP_CIPHER_fetch(NULL/*lib context*/, "AES-128-ECB", NULL/*property queue*/);
+    aesctx = EVP_CIPHER_CTX_new();
+
+    EVP_DecryptInit_ex(aesctx, aes, NULL/*implementation*/, key, NULL/*iv*/);
+
+    EVP_CIPHER_CTX_set_padding(aesctx, 0);
+
+    EVP_DecryptUpdate(aesctx, out, &aes_len, data, data_len);
+
+    EVP_CIPHER_CTX_free(aesctx);
+    EVP_CIPHER_free(aes);
+    return out;
+}
+
+
+byte* aes128_block_encrypt_incremental(byte* data, int data_len, byte* key)
+{
+    EVP_CIPHER* aes = NULL;
+    EVP_CIPHER_CTX* aesctx = NULL;
+
+    size_t blocks = data_len / 16;
+
+    byte* out = (byte*)OPENSSL_zalloc(data_len);
+
+    int aes_len = 0;
+
+    aes = EVP_CIPHER_fetch(NULL/*lib context*/, "AES-128-ECB", NULL/*property queue*/);
+    aesctx = EVP_CIPHER_CTX_new();
+
+    EVP_EncryptInit_ex(aesctx, aes, NULL/*implementation*/, key, NULL/*iv*/);
+
+    EVP_CIPHER_CTX_set_padding(aesctx, 0);
+
+    int i = 0;
+    while (i < blocks)
+    {
+        EVP_EncryptUpdate(aesctx, out + (i*16), &aes_len, data + (i*16), 16);
+        i++;
+    }
+
+    EVP_CIPHER_CTX_free(aesctx);
+    EVP_CIPHER_free(aes);
+
+    return out;
+}
+
+
+byte* aes128_block_decrypt_incremental(byte* data, int data_len, byte* key)
+{
+    EVP_CIPHER* aes = NULL;
+    EVP_CIPHER_CTX* aesctx = NULL;
+    size_t blocks = data_len / 16;
+    byte* out = (byte*)OPENSSL_zalloc(data_len);
+    int aes_len = 0;
+
+    aes = EVP_CIPHER_fetch(NULL/*lib context*/, "AES-128-ECB", NULL/*property queue*/);
+    aesctx = EVP_CIPHER_CTX_new();
+
+    EVP_DecryptInit_ex(aesctx, aes, NULL/*implementation*/, key, NULL/*iv*/);
+
+    EVP_CIPHER_CTX_set_padding(aesctx, 0);
+
+    int i = 0;
+    while (i < blocks)
+    {
+        EVP_DecryptUpdate(aesctx, out + (i*16), &aes_len, data + (i * 16), 16);
+        i++;
+    }
+
+    EVP_CIPHER_CTX_free(aesctx);
+    EVP_CIPHER_free(aes);
+    return out;
+}
+
+
+
+// =====================
+//   EAX
+// =====================
+
+
+byte* aes128_ctr(byte* data, int data_len, byte* key, byte* iv)
+{
+    int r = data_len % 16;
+    int blocks = r > 0 ? (data_len / 16 + 1) : (data_len / 16);
+
+    byte* out = NULL;
+    out = (byte*)OPENSSL_zalloc(data_len);
+
+    byte one_block[16];
+    memcpy(one_block, iv, 16);
+    byte ctr[4];
+    memcpy(ctr, iv + 12, 4);
+
+    byte* ctr_concatenate = NULL;
+    ctr_concatenate = (byte*)OPENSSL_zalloc(blocks * 16);
+    
+    int i = 0;    
+    while (i < blocks)
+    {
+        memcpy(ctr_concatenate + (i * 16), one_block, 16);
+        i++;
+        incrementWord32(ctr);
+        memcpy(one_block + 12, ctr, 4);
+    }
+
+    byte* encrypted_ctr = aes128_block_encrypt(ctr_concatenate, blocks * 16, key);
+
+    xorbuf(out, data, encrypted_ctr, data_len);
+
+    OPENSSL_free(ctr_concatenate);
+    OPENSSL_free(encrypted_ctr);
+
+    return out;
+}
+
+
+//byte* generateCMAC_3(byte* plaintext, int plaintextLength, byte* key, int key_size, int* tag_size)
+
+
+byte* cmac_with_prefix(byte* data, int data_len, int prefix, byte* key, int key_size, int *tag_size)
+{
+    size_t t = sizeof(prefix);
+    size_t total = data_len + 16;
+    byte* input = (byte*)OPENSSL_zalloc(total);
+
+    memset(input, 0, 16 - t);
+    memcpy(input + 16 - t, (byte*)&prefix, t);
+    if (data_len > 0)
+        memcpy(input + 16, data, data_len);
+
+    byte* tag = generateCMAC_3(input, total, key, key_size, tag_size);
+    OPENSSL_free(input);
+    return tag;
+}
+
+byte* eax_encrypt(byte* data, int data_len, byte* key, int key_size, byte* iv, int iv_size)
+{
+    int total = data_len + 16;
+    byte* out = (byte*)OPENSSL_zalloc(total);
+    int tag_size;
+    byte* big_N = cmac_with_prefix(iv, iv_size, 0, key, key_size, &tag_size);
+
+    byte* big_H = cmac_with_prefix(NULL, 0, 1, key, key_size, &tag_size);
+
+    byte* ciphertext = aes128_ctr(data, data_len, key, big_N);
+
+    byte* big_C = cmac_with_prefix(ciphertext, data_len, 2, key, key_size, &tag_size);
+
+    byte one_block[16];
+    byte tag[16];
+    xorbuf(one_block, big_N, big_C, 16);
+    xorbuf(tag, one_block, big_H, 16);
+
+    memcpy(out, ciphertext, data_len);
+    memcpy(out + data_len, tag, 16);
+
+    OPENSSL_free(big_N);
+    OPENSSL_free(big_C);
+    OPENSSL_free(big_H);
+    OPENSSL_free(ciphertext);
+
+    return out;
+}
+
+byte* eax_decrypt(byte* data, int data_len, byte* key, int key_size, byte* iv, int iv_size)
+{
+    int text_len = data_len - 16;
+    int tag_size;
+
+    byte tag_to_be_verified[16];
+    memcpy(tag_to_be_verified, data + text_len, 16);
+
+    byte* big_N = cmac_with_prefix(iv, iv_size, 0, key, key_size, &tag_size);
+
+    byte* big_H = cmac_with_prefix(NULL, 0, 1, key, key_size, &tag_size);
+
+    byte* big_C = cmac_with_prefix(data, text_len, 2, key, key_size, &tag_size);
+
+    byte one_block[16];
+    byte tag[16];
+    xorbuf(one_block, big_N, big_C, 16);
+    xorbuf(tag, one_block, big_H, 16);
+
+    int diff = memcmp(tag, tag_to_be_verified, 16);
+
+    if (diff != 0)
+    {
+        return NULL;
+    }
+
+    byte* plaintext = aes128_ctr(data, text_len, key, big_N);
+    
+    OPENSSL_free(big_N);
+    OPENSSL_free(big_C);
+    OPENSSL_free(big_H);
+    
+    return plaintext;
+}
+
 }

@@ -29,3 +29,22 @@ namespace AUX_TEST {
 	void test1();
 	void test2();
 }
+
+namespace INTEROP_TEST_CMAC {
+	void test1();
+	void test2();
+	void test3();
+	void test4();
+}
+
+namespace OPENSSL_AES_ECB_TEST {
+	void test1();
+	void test2();
+	void test3();
+	void test4();
+	void test5();
+}
+
+namespace INTEROP_TEST_EAX {
+	void test1();
+}
