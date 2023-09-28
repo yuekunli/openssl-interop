@@ -135,8 +135,8 @@ namespace INTEROP_TEST_DH {
 
 	void test_Diffie_Hellman()
 	{
-		test(ALGO::DLDH1024, LIB::CRYPTOPP, LIB::OPENSSL);
-		test(ALGO::DLDH2048, LIB::CRYPTOPP, LIB::OPENSSL);
+		//test(ALGO::DLDH1024, LIB::CRYPTOPP, LIB::OPENSSL);   // not supported by FIPS
+		//test(ALGO::DLDH2048, LIB::CRYPTOPP, LIB::OPENSSL);   // not supported by FIPS
 		test(ALGO::DLDH2048, LIB::OPENSSL, LIB::CRYPTOPP);
 		test(ALGO::DLDH2048, LIB::OPENSSL, LIB::OPENSSL);
 		test(ALGO::ECDH, LIB::CRYPTOPP, LIB::OPENSSL);

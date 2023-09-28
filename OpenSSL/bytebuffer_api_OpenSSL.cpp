@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <cstring>
 #include <string.h>
-#include<iostream>
+#include <iostream>
 
 
 
@@ -74,6 +74,7 @@ namespace BYTE_BUFFERIZED_OPENSSL {
 
 
 #define LOG3 printf
+#define LOG2 printf
 
 
 char* getFormattedString(char const* pszformat, ...)
@@ -121,7 +122,8 @@ byte RngGenerateByte()
     byte result;
     if (RAND_bytes(&result, 1) <= 0)
     {
-        LOG3(logMessage, "FAIL", "Generate 1 byte random", ERR_get_error(), 1, "");
+        LOG2("FAIL. Generate 1 byte random, Error Code: %ul", ERR_get_error());
+        throw std::runtime_error("FAIL. Generate 1 byte random");
     }
     return result;
 }
@@ -131,7 +133,8 @@ DWORD RngGenerateDword()
     DWORD result;
     if (RAND_bytes((unsigned char*)(&result), sizeof(DWORD)) <= 0)
     {
-        LOG3(logMessage, "FAIL", "Generate DWROD random", ERR_get_error(), 1, "");
+        LOG2("FAIL. Generate DWORD random, Error Code: %ul", ERR_get_error());
+        throw std::runtime_error("FAIL. Generate DWORD random");
     }
     return result;
 }
@@ -140,9 +143,15 @@ LONGLONG RngGenerateQword()
 {
     LARGE_INTEGER x;
 
-    x.LowPart = RngGenerateDword();
-    x.HighPart = RngGenerateDword();
-
+    try {
+        x.LowPart = RngGenerateDword();
+        x.HighPart = RngGenerateDword();
+    }
+    catch (std::runtime_error& e)
+    {
+        LOG2("FAIL. Generate LONGLONG random");
+        throw std::runtime_error(e);
+    }
     return x.QuadPart;
 }
 
@@ -152,11 +161,12 @@ void RngFillByteArrayRegion(byte* pArray, int nStartingOffset, int nBytes)
     {
         if (RAND_bytes(pArray+nStartingOffset, nBytes) <= 0)
         {
-            LOG3(logMessage, "FAIL", "Generate array random", ERR_get_error(), 1, "");
+            LOG2("FAIL. Generate array random. Error Code: %ul", ERR_get_error());
+            throw std::runtime_error("FAIL. Generate array random");
         }
         return;
     }
-    LOG3(logMessage, "FAIL", "Generate array random", 0, 0, "Invalid Input");
+    LOG2("FAIL. Generate array random. Invalid Input. pArray %p, nStartingOffset %i, nBytes %i", pArray, nStartingOffset, nBytes);
 }
 
 
@@ -188,102 +198,104 @@ SecureHashState *SHInitialize(int hashingAlgorithm)
 {
     SecureHashState *pState = NULL;
     bool success = false;
+    //OSSL_LIB_CTX* libCtx = NULL;
+
     if ((pState = (SecureHashState*)OPENSSL_zalloc(sizeof(SecureHashState))) == NULL)
     {
-        LOG3(logMessage, "FAIL", "alloc for SecureHashState", 0, 0, "");
+        LOG2("FAIL. mem allocate SecureHashState");
         return NULL;
     }
     pState->hashingAlgorithm = hashingAlgorithm;
 
-    OSSL_LIB_CTX *libCtx;
-    libCtx = OSSL_LIB_CTX_new();
-    if (libCtx == NULL)
-    {
-        LOG3(logMessage, "FAIL", "Initialize lib context", 0, 0, "");
-        goto cleanup;
-    }
+    //libCtx = OSSL_LIB_CTX_new();
+    //if (libCtx == NULL)
+    //{
+    //    LOG2("FAIL. Initialize lib context");
+    //    goto cleanup;
+    //}
 
     switch(pState->hashingAlgorithm)
     {
         case ___SECUREHASH_ALGORITHM_SHA256:
-            pState->pSha256 = EVP_MD_fetch(libCtx, "SHA256", /*properties*/NULL);
+            pState->pSha256 = EVP_MD_fetch(NULL /*libCtx*/, "SHA256", /*properties*/"fips=yes");
             if (pState->pSha256 == NULL)
             {
-                LOG3(logMessage, "FAIL", "Initialize SHA256", 0, 0, "EVP_MD_fetch fail");
+                LOG2("FAIL. Fetch SHA256 implementation");
                 goto cleanup;
             }
             pState->nSecureHashLength = EVP_MD_get_size(pState->pSha256);
             if (pState->nSecureHashLength <= 0)
             {
-                LOG3(logMessage, "FAIL", "Get SHA256 hash length", 0, 0, "EVP_MD_get_size fail");
+                LOG2("FAIL. Get SHA256 hash length");
                 goto cleanup;
             }
             pState->pSha256Ctx = EVP_MD_CTX_new();
             if (pState->pSha256Ctx == NULL)
             {
-                LOG3(logMessage, "FAIL", "Initialize SHA256 Context", 0, 0, "EVP_MD_CTX_new fail");
+                LOG2("FAIL. Initialize SHA256 Context");
                 goto cleanup;
             }
             if (EVP_DigestInit(pState->pSha256Ctx, pState->pSha256) != 1)
             {
-                LOG3(logMessage, "FAIL", "Initialize SHA256", 0, 0, "EVP_DigestInit fail");
+                LOG2("FAIL. Initialize SHA256");
                 goto cleanup;
             }
             success = true;
             break;
         case ___SECUREHASH_ALGORITHM_SHA384:
-            pState->pSha384 = EVP_MD_fetch(libCtx, "SHA384", /*properties*/NULL);
+            pState->pSha384 = EVP_MD_fetch(NULL /*libCtx*/, "SHA384", /*properties*/"fips=yes");
             if (pState->pSha384 == NULL)
             {
-                LOG3(logMessage, "FAIL", "Initialize SHA384", 0, 0, "EVP_MD_fetch fail");
+                LOG2("FAIL. Fetch SHA384 implementation");
                 goto cleanup;
             }
             pState->nSecureHashLength = EVP_MD_get_size(pState->pSha384);
             if (pState->nSecureHashLength <= 0)
             {
-                LOG3(logMessage, "FAIL", "Get SHA384 hash length", 0, 0, "EVP_MD_get_size fail");
+                LOG2("FAIL. Get SHA384 hash length");
                 goto cleanup;
             }
             pState->pSha384Ctx = EVP_MD_CTX_new();
             if (pState->pSha384Ctx == NULL)
             {
-                LOG3(logMessage, "FAIL", "Initializa SHA384 Context", 0, 0, "EVP_MD_CTX_new fail");
+                LOG2("FAIL. Initializa SHA384 Context");
                 goto cleanup;
             }
             if (EVP_DigestInit(pState->pSha384Ctx, pState->pSha384) != 1)
             {
-                LOG3(logMessage, "FAIL", "Initialize SHA384", 0, 0, "EVP_DigestInit fail");
+                LOG2("FAIL. Initialize SHA384");
                 goto cleanup;
             }
             success = true;
             break;
         case ___SECUREHASH_ALGORITHM_SHA512:
-            pState->pSha512 = EVP_MD_fetch(libCtx, "SHA512", /*properties*/NULL);
+            pState->pSha512 = EVP_MD_fetch(NULL /*libCtx*/, "SHA512", /*properties*/"fips=yes");
             if (pState->pSha512 == NULL)
             {
-                LOG3(logMessage, "FAIL", "Initialize SHA512", 0, 0, "EVP_MD_fetch fail");
-                goto cleanup;                
+                LOG2("FAIL. Fetch SHA512 implementation");
+                goto cleanup;
             }
             pState->nSecureHashLength = EVP_MD_get_size(pState->pSha512);
             if (pState->nSecureHashLength <= 0)
             {
-                LOG3(logMessage, "FAIL", "Get SHA512 hash length", 0, 0, "EVP_MD_get_size fail");
+                LOG2("FAIL. Get SHA512 hash length");
                 goto cleanup;
             }            
             pState->pSha512Ctx = EVP_MD_CTX_new();
             if (pState->pSha512Ctx == NULL)
             {
-                LOG3(logMessage, "FAIL", "Initializa SHA512 Context", 0, 0, "EVP_MD_CTX_new fail");
-                goto cleanup;                
+                LOG2("FAIL. Initializa SHA512 Context");
+                goto cleanup;
             }
             if (EVP_DigestInit(pState->pSha512Ctx, pState->pSha512) != 1)
             {
-                LOG3(logMessage, "FAIL", "Initialize SHA512", 0, 0, "EVP_DigestInit fail");
+                LOG2("FAIL. Initialize SHA512");
                 goto cleanup;
             }
             success = true;
             break;
         default:
+            LOG2("Unknown hash algorithm");
             goto cleanup;
             break;
     }
@@ -318,7 +330,8 @@ SecureHashState *SHInitialize(int hashingAlgorithm)
         OPENSSL_free(pState);
         pState = NULL;
     }
-    OSSL_LIB_CTX_free(libCtx);
+    //if (libCtx == NULL)
+    //    OSSL_LIB_CTX_free(libCtx);
     return pState;
 }
 
@@ -326,6 +339,10 @@ int SHGetDigestLength(SecureHashState *pState)
 {
     if (pState != NULL)
         return pState->nSecureHashLength;
+    else
+    {
+        LOG2("ERROR. Invalid input. pState NULL");
+    }
 
     return 0;
 }
@@ -705,7 +722,7 @@ SymmetricCipher *CipherInitialize(int nAlgo, bool fEncrypt)
     pSymCipher->fEncrypt = fEncrypt;
     pSymCipher->nAlgorithm = nAlgo;
     pSymCipher->pCtx = EVP_CIPHER_CTX_new();
-    pSymCipher->pImplement = EVP_CIPHER_fetch(/*libctx*/ NULL, pChosen, /*property queue*/ NULL);
+    pSymCipher->pImplement = EVP_CIPHER_fetch(/*libctx*/ NULL, pChosen, /*property queue*/ "fips=yes");
     pSymCipher->pBIOInput = BIO_new(BIO_s_mem());
 
     return pSymCipher;
@@ -1871,7 +1888,7 @@ static EVP_PKEY *createPkeyWithOneKey_EC_curve_keypair_separate(byte *pKnownKey,
     *p++ = OSSL_PARAM_construct_utf8_string(OSSL_PKEY_PARAM_EC_FIELD_TYPE, (char*)"prime-field", 0);
     *p = OSSL_PARAM_construct_end();
 
-    curveCtx = EVP_PKEY_CTX_new_from_name(/*lib context*/NULL, "EC", /* prop query */ NULL);
+    curveCtx = EVP_PKEY_CTX_new_from_name(/*lib context*/NULL, "EC", /* prop query */ "fips=yes");
 
     EVP_PKEY_keygen_init(curveCtx);
 
@@ -1879,7 +1896,7 @@ static EVP_PKEY *createPkeyWithOneKey_EC_curve_keypair_separate(byte *pKnownKey,
 
     EVP_PKEY_keygen(curveCtx, &curve);
 
-    keyCtx = EVP_PKEY_CTX_new_from_pkey(/*lib context*/NULL, curve, /*prop query*/ NULL);
+    keyCtx = EVP_PKEY_CTX_new_from_pkey(/*lib context*/NULL, curve, /*prop query*/ "fips=yes");
     EVP_PKEY_fromdata_init(keyCtx);
     p = params;
     if (isPublic)
@@ -1925,7 +1942,7 @@ static EVP_PKEY* generate_EC_keypair_curve_keypair_separate()
     *p++ = OSSL_PARAM_construct_utf8_string(OSSL_PKEY_PARAM_EC_FIELD_TYPE, (char*)"prime-field", 0);
     *p = OSSL_PARAM_construct_end();
 
-    curveCtx = EVP_PKEY_CTX_new_from_name(/* library context */ NULL, "EC", /* prop query */ NULL);
+    curveCtx = EVP_PKEY_CTX_new_from_name(/* library context */ NULL, "EC", /* prop query */ "fips=yes");
     if (curveCtx == NULL)
     {
         goto done;
@@ -1943,7 +1960,7 @@ static EVP_PKEY* generate_EC_keypair_curve_keypair_separate()
         goto done;
     }
 
-    keyCtx = EVP_PKEY_CTX_new_from_pkey(/* library context */ NULL, curve, /*prop query*/ NULL);
+    keyCtx = EVP_PKEY_CTX_new_from_pkey(/* library context */ NULL, curve, /*prop query*/ "fips=yes");
     if (keyCtx == NULL)
     {
         goto done;
@@ -1979,7 +1996,7 @@ static EVP_PKEY* generate_EC_keypair_single_context()
 
     EVP_PKEY_CTX* ctx = NULL;
 
-    ctx = EVP_PKEY_CTX_new_from_name(/*lib context*/NULL, "EC", /*properties*/NULL);
+    ctx = EVP_PKEY_CTX_new_from_name(/*lib context*/NULL, "EC", /*properties*/"fips=yes");
 
     r = EVP_PKEY_keygen_init(ctx);
 
@@ -2069,7 +2086,7 @@ static bool DhInitialize_DL_liyk(DHState* p)
     BIGNUM* pBNPubKey = NULL;
     bool success = false;
 
-    if ((pctx = EVP_PKEY_CTX_new_from_name(NULL, "DH", NULL)) == NULL)
+    if ((pctx = EVP_PKEY_CTX_new_from_name(NULL, "DH", "fips=yes")) == NULL)
         return NULL;
 
     params[0] = OSSL_PARAM_construct_utf8_string("group", (char*)"ffdhe2048", 0);
@@ -2149,7 +2166,7 @@ static bool DhInitialize_DL_AliceInitiate(DHState* p)
 
     OSSL_PARAM paramsArray[2];
 
-    dompCtx = EVP_PKEY_CTX_new_from_name(NULL, "DH", NULL);
+    dompCtx = EVP_PKEY_CTX_new_from_name(NULL, "DH", "fips=yes");
     if (dompCtx == NULL)
     {
         LOG3(logMessage, "FAIL", "Create new domain paramter context", 0, 0, "");
@@ -2285,7 +2302,7 @@ static bool DhInitialize_DL_BobRespond(DHState* p)
         LOG3(logMessage, "FAIL", "Build parameters", 0, 0, "");
         goto done;
     }
-    dompCtx = EVP_PKEY_CTX_new_from_name(NULL, "DH", NULL);
+    dompCtx = EVP_PKEY_CTX_new_from_name(NULL, "DH", "fips=yes");
     if (!dompCtx)
     {
         LOG3(logMessage, "FAIL", "Create new domain parameters context", 0, 0, "");
@@ -2372,7 +2389,7 @@ static bool DhInitialize_DL(DHState *dhState)
         }
     }
 
-    keyPairCtx = EVP_PKEY_CTX_new_from_pkey(NULL, dhState->dlDomain, NULL);
+    keyPairCtx = EVP_PKEY_CTX_new_from_pkey(NULL, dhState->dlDomain, "fips=yes");
     if (keyPairCtx == NULL)
     {
         LOG3(logMessage, "FAIL", "Create new key pair", 0, 0, "EVP_PKEY_CTX_new_from_pkey");
@@ -2578,7 +2595,7 @@ static bool deriveSecretDH(EVP_PKEY *peerKey, EVP_PKEY *selfKeyPair, byte **ppSe
     size_t secLen;
     bool success = false;
 
-    derivationCtx = EVP_PKEY_CTX_new_from_pkey(NULL, selfKeyPair, NULL);
+    derivationCtx = EVP_PKEY_CTX_new_from_pkey(NULL, selfKeyPair, "fips=yes");
 
     EVP_PKEY_derive_init(derivationCtx);
 
@@ -2703,7 +2720,7 @@ static void derEncodeECPkey(byte **output, size_t *outputLen, EVP_PKEY *pkey, in
 
     int selection = publicOrPrivate ? EVP_PKEY_PUBLIC_KEY : EVP_PKEY_KEYPAIR;
     char const * output_struct = publicOrPrivate ? "SubjectPublicKeyInfo" : "PrivateKeyInfo";
-    ctx = OSSL_ENCODER_CTX_new_for_pkey(pkey, selection, "DER", output_struct, /*properties*/NULL);
+    ctx = OSSL_ENCODER_CTX_new_for_pkey(pkey, selection, "DER", output_struct, /*properties*/"fips=yes");
 
     r = OSSL_ENCODER_to_data(ctx, output, outputLen);
     OSSL_ENCODER_CTX_free(ctx);
@@ -2717,7 +2734,7 @@ static void derDecodeECPkey(EVP_PKEY **ppPkey, byte const *encodedKey, size_t en
     int selection = publicOrPrivate ? EVP_PKEY_PUBLIC_KEY : EVP_PKEY_KEYPAIR;
     char const * input_struct = publicOrPrivate ? "SubjectPublicKeyInfo" : "PrivateKeyInfo";
 
-    ctx = OSSL_DECODER_CTX_new_for_pkey(ppPkey, "DER", input_struct, "EC", selection, /*lib context*/NULL, /*properties*/NULL);
+    ctx = OSSL_DECODER_CTX_new_for_pkey(ppPkey, "DER", input_struct, "EC", selection, /*lib context*/NULL, /*properties*/"fips=yes");
     r = OSSL_DECODER_from_data(ctx, &encodedKey, &encodedKeyLen);
     OSSL_DECODER_CTX_free(ctx);
 }
@@ -2741,7 +2758,7 @@ static int DsaGenerateKeyPairInPlainBinary(byte **ppPriKey, int *pnPriKeyLen, by
 
     EVP_PKEY_CTX *curveCtx = NULL, *keyCtx = NULL;
 
-    curveCtx = EVP_PKEY_CTX_new_from_name(/* lib context */ NULL, "EC", /* prop query */ NULL);
+    curveCtx = EVP_PKEY_CTX_new_from_name(/* lib context */ NULL, "EC", /* prop query */ "fips=yes");
 
     EVP_PKEY_keygen_init(curveCtx);
 
@@ -2749,7 +2766,7 @@ static int DsaGenerateKeyPairInPlainBinary(byte **ppPriKey, int *pnPriKeyLen, by
 
     EVP_PKEY_generate(curveCtx, &curve);
 
-    keyCtx = EVP_PKEY_CTX_new_from_pkey(/* lib context */ NULL, curve, /*prop query*/ NULL);
+    keyCtx = EVP_PKEY_CTX_new_from_pkey(/* lib context */ NULL, curve, /*prop query*/ "fips=yes");
     EVP_PKEY_keygen_init(keyCtx);
     EVP_PKEY_generate(keyCtx, &pkey);
 
@@ -2930,7 +2947,7 @@ static int generateDerEncodedEcdsaSignature(byte *pDataBuffer, int nDataBufferLe
 
     digestCtx = EVP_MD_CTX_create();
 
-    EVP_DigestSignInit_ex(digestCtx, /* pkey ctx */NULL, "SHA512", /*lib context*/NULL, /* props */NULL, pkey, /* params */NULL);
+    EVP_DigestSignInit_ex(digestCtx, /* pkey ctx */NULL, "SHA512", /*lib context*/NULL, /* props */"fips=yes", pkey, /* params */NULL);
     EVP_DigestSignUpdate(digestCtx, pDataBuffer, nDataBufferLength);
 
     size_t sig_len;
@@ -2979,7 +2996,7 @@ static int verifyDerEncodedEcdsaSignature(byte *pDataBuffer, int nDataBufferLeng
 
     digestCtx = EVP_MD_CTX_create();
 
-    EVP_DigestVerifyInit_ex(digestCtx, /*pkey ctx*/NULL, "SHA512", /*lib context*/NULL, /* props */ NULL, pkey, /*params*/ NULL);
+    EVP_DigestVerifyInit_ex(digestCtx, /*pkey ctx*/NULL, "SHA512", /*lib context*/NULL, /* props */"fips=yes", pkey, /*params*/ NULL);
 
     EVP_DigestVerifyUpdate(digestCtx, pDataBuffer, nDataBufferLength);
 
@@ -3110,7 +3127,7 @@ static byte* p1363KeyDerive(byte *sec, int secLen, int neededKeyLen)
     EVP_MD *sha1;
     EVP_MD_CTX *ctx;
 
-    sha1 = EVP_MD_fetch(/*lib context*/NULL, "SHA1", /*properties*/NULL);
+    sha1 = EVP_MD_fetch(/*lib context*/NULL, "SHA1", /*properties*/"fips=yes");
     ctx = EVP_MD_CTX_new();
     r = EVP_DigestInit(ctx, sha1);
     int nDigestLen = EVP_MD_get_size(sha1);
@@ -3150,7 +3167,7 @@ static byte *computeHmacSha1(byte *key, int keyLen, byte *pData, int dataLen, in
     EVP_MAC *hmac = NULL;
     EVP_MAC_CTX *hmacCtx = NULL;
 
-    hmac = EVP_MAC_fetch(/*lib context*/NULL, "HMAC", /*properties*/ NULL);
+    hmac = EVP_MAC_fetch(/*lib context*/NULL, "HMAC", /*properties*/ "fips=yes");
     hmacCtx = EVP_MAC_CTX_new(hmac);
 
     OSSL_PARAM params[3];
@@ -3337,7 +3354,7 @@ byte* generateCMAC_3(byte* plaintext, int plaintextLength, byte* key, int key_si
     OSSL_PARAM* p = params;
     char cipher_name[] = "AES-128-CBC";
 
-    cmac = EVP_MAC_fetch(NULL/*lib context*/, "CMAC", NULL/*property queue*/);
+    cmac = EVP_MAC_fetch(NULL/*lib context*/, "CMAC", "fips=yes"/*property queue*/);
 
     ctx = EVP_MAC_CTX_new(cmac);
 
@@ -3374,7 +3391,7 @@ bool verifyCMAC_3(byte* plaintext, int plaintextLength, byte* key, int key_size,
     OSSL_PARAM* p = params;
     char cipher_name[] = "AES-128-CBC";
 
-    cmac = EVP_MAC_fetch(NULL/*lib context*/, "CMAC", NULL/*property queue*/);
+    cmac = EVP_MAC_fetch(NULL/*lib context*/, "CMAC", "fips=yes"/*property queue*/);
 
     ctx = EVP_MAC_CTX_new(cmac);
 
@@ -3415,7 +3432,7 @@ byte* aes128_block_encrypt(byte* data, int data_len, byte* key)
     byte* out = (byte*)OPENSSL_zalloc(data_len);
     int aes_len = 0;
 
-    aes = EVP_CIPHER_fetch(NULL/*lib context*/, "AES-128-ECB", NULL/*property queue*/);
+    aes = EVP_CIPHER_fetch(NULL/*lib context*/, "AES-128-ECB", "fips=yes"/*property queue*/);
     aesctx = EVP_CIPHER_CTX_new();
 
     EVP_EncryptInit_ex(aesctx, aes, NULL/*implementation*/, key, NULL/*iv*/);
@@ -3437,7 +3454,7 @@ byte* aes128_block_decrypt(byte* data, int data_len, byte* key)
     byte* out = (byte*)OPENSSL_zalloc(data_len);
     int aes_len = 0;
 
-    aes = EVP_CIPHER_fetch(NULL/*lib context*/, "AES-128-ECB", NULL/*property queue*/);
+    aes = EVP_CIPHER_fetch(NULL/*lib context*/, "AES-128-ECB", "fips=yes"/*property queue*/);
     aesctx = EVP_CIPHER_CTX_new();
 
     EVP_DecryptInit_ex(aesctx, aes, NULL/*implementation*/, key, NULL/*iv*/);
@@ -3463,7 +3480,7 @@ byte* aes128_block_encrypt_incremental(byte* data, int data_len, byte* key)
 
     int aes_len = 0;
 
-    aes = EVP_CIPHER_fetch(NULL/*lib context*/, "AES-128-ECB", NULL/*property queue*/);
+    aes = EVP_CIPHER_fetch(NULL/*lib context*/, "AES-128-ECB", "fips=yes"/*property queue*/);
     aesctx = EVP_CIPHER_CTX_new();
 
     EVP_EncryptInit_ex(aesctx, aes, NULL/*implementation*/, key, NULL/*iv*/);
@@ -3492,7 +3509,7 @@ byte* aes128_block_decrypt_incremental(byte* data, int data_len, byte* key)
     byte* out = (byte*)OPENSSL_zalloc(data_len);
     int aes_len = 0;
 
-    aes = EVP_CIPHER_fetch(NULL/*lib context*/, "AES-128-ECB", NULL/*property queue*/);
+    aes = EVP_CIPHER_fetch(NULL/*lib context*/, "AES-128-ECB", "fips=yes"/*property queue*/);
     aesctx = EVP_CIPHER_CTX_new();
 
     EVP_DecryptInit_ex(aesctx, aes, NULL/*implementation*/, key, NULL/*iv*/);
