@@ -1038,7 +1038,7 @@ namespace BYTE_BUFFERIZED_CRYPTOPP {
 		case 2:
 			return 256;
 		case 3:
-			return 128 /*256*/; // use 128 to test inter-op with OpenSSL, because OpenSSL supports at most 128 bytes IV
+			return 256; // need to change this to 128 if I want to test crypto++ <--> OpenSSL interoperability, and if I take open source OpenSSL *as it is*.
 		case 4:
 			return 8;
 		}

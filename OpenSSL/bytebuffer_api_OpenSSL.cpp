@@ -59,14 +59,7 @@ namespace BYTE_BUFFERIZED_OPENSSL {
 
 #define ___IV_LENGTH_AES256_CBC 16
 #define ___IV_LENGTH_AES256_EAX 256
-#define ___IV_LENGTH_AES256_GCM 128 // Java code has this macro set to 256
-                                    // OpenSSL can support up to 128 bytes IV for GCM
-                                    // Crypto++ can support up to 2^64 - 1 bits IV
-                                    // OpenSSL MAX IV length is defined in ciphercommon_gcm.h GCM_IV_MAX_SIZE 1024/8
-                                    // struct prov_gcm_ctx_st has a field   unsigned char iv[GCM_IV_MAX_SIZE]
-                                    // OpenSSL GCM implementation doesn't seem to have technical barrier that keeps IV from being longer than 128 bytes
-                                    // Try changing GCM_IV_MAX_SIZE to a bigger value and re-compile the library.
-                                    // There is another macro "EVP_MAX_IV_LENGTH" which seems irrelevant to GCM implementation.
+#define ___IV_LENGTH_AES256_GCM 256   // need to change this to 128 if I take open source OpenSSL *as it is*
 #define ___IV_LENGTH_TRIPLE_DES_CBC 8
 
 
