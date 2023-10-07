@@ -13,6 +13,7 @@ namespace INTEROP_TEST_ECIES {
 
 namespace INTEROP_TEST_ECDSA {
 	void test_ECDSA();
+	void test_ECDSA_special_case();
 }
 
 namespace INTEROP_TEST_DH {

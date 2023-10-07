@@ -380,7 +380,7 @@ bool SHUpdate(SecureHashState *pState, byte input)
                 break;
         }
     }
-    return false;
+    return true;
 }
 
 bool SHUpdate(SecureHashState *pState, byte *input, int nOffset, int nLen)
@@ -2687,7 +2687,7 @@ int DhRelease(DHState *pState)
 
         OPENSSL_free(pState);
     }
-    return 1;
+    return 0;
 }
 
 byte *DhGenerateAESKey(DHState *pState, int *pnAESKeyLength)
@@ -2787,7 +2787,7 @@ static int DsaGenerateKeyPairInPlainBinary(byte **ppPriKey, int *pnPriKeyLen, by
     EVP_PKEY_CTX_free(keyCtx);
     EVP_PKEY_free(curve);
     EVP_PKEY_free(pkey);
-    return 1;
+    return 0;
 }
 
 int DsaGenerateKeyPair(byte **ppPriKey, int *pnPriKeyLen, byte **ppPubKey, int *pnPubKeyLen)
@@ -2844,22 +2844,53 @@ int DsaGenerateKeyPair(byte **ppPriKey, int *pnPriKeyLen, byte **ppPubKey, int *
 // 22A7A25B01403CFF0D00B3B853D230F8E96FF832B15D4CCC75203CB65896A2D5
 
 
-byte* derEncodeEcdsaSignature(byte* sig, int* outputLen)
-{
 
+
+//00431575f8536b284410d01217f688be3a9faf4ba0ba3a9093f983e40d630ec7
+//22a7a25b01403cff0d00b3b853d230f8e96ff832b15d4ccc75203cb65896a2d5
+
+// 30
+// 44
+// 02
+// 1f
+//   431575F8536B284410D01217F688BE3A9FAF4BA0BA3A9093F983E40D630EC7
+// 02
+// 20
+// 22A7A25B01403CFF0D00B3B853D230F8E96FF832B15D4CCC75203CB65896A2D5
+
+
+static byte* findLengthAndStart(byte* input, int* length)
+{
+    unsigned char v = *input;
+    int skip = 0;
+    while (v == 0)
+    {
+        input++;
+        skip++;
+        v = *input;
+    }
+    int original_length = *length;
+    *length = original_length - skip;
+    return input;
+}
+
+static byte* derEncodeEcdsaSignature(byte* sig, int* outputLen)
+{
     size_t outLen;
     byte* out;
-
-    byte* r = sig;
-    byte* s = sig + 32;
-    size_t rLen;
-    size_t sLen;
+ 
+    int l = 32;
+    byte* r = findLengthAndStart(sig, &l);
+    size_t rLen_after_removing_leading_zero = l;
+    l = 32;
+    byte* s = findLengthAndStart(sig + 32, &l);
+    size_t sLen_after_removing_leading_zero = l;
 
     unsigned char r1 = *r;
     unsigned char s1 = *s;
 
-    rLen = r1 >= 128 ? 33 : 32;
-    sLen = s1 >= 128 ? 33 : 32;
+    size_t rLen = r1 >= 128 ? rLen_after_removing_leading_zero + 1 : rLen_after_removing_leading_zero;
+    size_t sLen = s1 >= 128 ? sLen_after_removing_leading_zero + 1 : sLen_after_removing_leading_zero;
 
     outLen = 6 + rLen + sLen;
 
@@ -2872,20 +2903,21 @@ byte* derEncodeEcdsaSignature(byte* sig, int* outputLen)
     *p++ = rLen;
     if (r1 >= 128)
         *p++ = 0x0;
-    memcpy(p, r, 0x20);
-    p += 0x20;
+    memcpy(p, r, rLen_after_removing_leading_zero);
+    p += rLen_after_removing_leading_zero;
     *p++ = 0x02;
     *p++ = sLen;
     if (s1 >= 128)
         *p++ = 0x0;
-    memcpy(p, s, 0x20);
+    memcpy(p, s, sLen_after_removing_leading_zero);
 
     *outputLen = (int)outLen;
 
     return out;
 }
 
-byte* derDecodeEcdsaSignature(byte* sig, int* outputLen)
+
+static byte* derDecodeEcdsaSignature(byte* sig, int* outputLen)
 {
     byte* out = (byte*)malloc(64);
     byte* r = out;
@@ -2899,13 +2931,24 @@ byte* derDecodeEcdsaSignature(byte* sig, int* outputLen)
     if (rLen == 0x20)
     {
         p++;
+        memcpy(r, p, 0x20);
+        p += 0x20;
     }
     else if (rLen == 0x21)
     {
         p += 2;
+        memcpy(r, p, 0x20);
+        p += 0x20;
     }
-    memcpy(r, p, 0x20);
-    p += 0x20;
+    else if (rLen < 0x20)
+    {
+        int prepend = 0x20 - rLen;
+        p++;
+        for (int i = 0; i < prepend; i++)
+            *r++ = 0;
+        memcpy(r, p, rLen);
+        p += rLen;
+    }
 
     if (*p != 0x02)
         return NULL;
@@ -2916,13 +2959,22 @@ byte* derDecodeEcdsaSignature(byte* sig, int* outputLen)
     if (sLen == 0x20)
     {
         p++;
+        memcpy(s, p, 0x20);
     }
     else if (sLen == 0x21)
     {
         p += 2;
+        memcpy(s, p, 0x20);
     }
-    memcpy(s, p, 0x20);
-
+    else if (sLen < 0x20)
+    {
+        int prepend = 0x20 - sLen;
+        p++;
+        for (int i = 0; i < prepend; i++)
+            *s++ = 0;
+        memcpy(s, p, sLen);
+    }
+    
     *outputLen = 64;
 
     return out;
@@ -2979,7 +3031,7 @@ int DsaGenerateSignature(byte* pDataBuffer, int nDataBufferLength, byte* pPrivat
 
 
 // OpenSSL always assumes the input signature is in DER encoded format
-static int verifyDerEncodedEcdsaSignature(byte *pDataBuffer, int nDataBufferLength, byte *pPublicKey, int nPublicKeyLength, byte *pSignature, int nSignatureLenght)
+static int verifyDerEncodedEcdsaSignature(byte *pDataBuffer, int nDataBufferLength, byte *pPublicKey, int nPublicKeyLength, byte *pSignature, int nSignatureLength)
 {
     EVP_PKEY *pkey = NULL;
 
@@ -2993,7 +3045,7 @@ static int verifyDerEncodedEcdsaSignature(byte *pDataBuffer, int nDataBufferLeng
 
     EVP_DigestVerifyUpdate(digestCtx, pDataBuffer, nDataBufferLength);
 
-    int isMatch = EVP_DigestVerifyFinal(digestCtx, pSignature, nSignatureLenght);
+    int isMatch = EVP_DigestVerifyFinal(digestCtx, pSignature, nSignatureLength);
 
     EVP_MD_CTX_free(digestCtx);
     EVP_PKEY_free(pkey);
@@ -3002,7 +3054,7 @@ static int verifyDerEncodedEcdsaSignature(byte *pDataBuffer, int nDataBufferLeng
 }
 
 // assuming signature is in plain r|s concatenated format
-int DsaVerifySignature(byte* pDataBuffer, int nDataBufferLength, byte* pPublicKey, int nPublicKeyLength, byte* pSignature, int nSignatureLenght)
+int DsaVerifySignature(byte* pDataBuffer, int nDataBufferLength, byte* pPublicKey, int nPublicKeyLength, byte* pSignature, int nSignatureLength)
 {
     byte* derEncodedSig;
     int derEncodedSigLen;
