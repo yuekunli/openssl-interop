@@ -1,0 +1,18 @@
+perl Configure VC-WIN32  --debug --prefix=C:\ws\openssl_output\lib\x32\debug   --openssldir=C:\ws\openssl_output\SSL_static_32_debug   no-shared  enable-fips
+
+perl Configure VC-WIN32          --prefix=C:\ws\openssl_output\lib\x32\release --openssldir=C:\ws\openssl_output\SSL_static_32_release no-shared  enable-fips
+
+perl Configure VC-WIN64A --debug --prefix=C:\ws\openssl_output\lib\x64\debug   --openssldir=C:\ws\openssl_output\SSL_static_64_debug   no-shared  enable-fips
+
+perl Configure VC-WIN64A         --prefix=C:\ws\openssl_output\lib\x64\release --openssldir=C:\ws\openssl_output\SSL_static_64_release no-shared  enable-fips
+
+
+
+
+openssl fipsinstall -module ..\lib\ossl-modules\fips.dll -out C:\ws\openssl_output\SSL_static_32_debug\fipsmodule.cnf -self_test_oninstall
+
+openssl fipsinstall -module ..\lib\ossl-modules\fips.dll -out C:\ws\openssl_output\SSL_static_32_release\fipsmodule.cnf -self_test_oninstall
+
+openssl fipsinstall -module ..\lib\ossl-modules\fips.dll -out C:\ws\openssl_output\SSL_static_64_debug\fipsmodule.cnf -self_test_oninstall
+
+openssl fipsinstall -module ..\lib\ossl-modules\fips.dll -out C:\ws\openssl_output\SSL_static_64_release\fipsmodule.cnf -self_test_oninstall
