@@ -52,3 +52,8 @@ namespace INTEROP_TEST_EAX {
 	void test3();
 	void test4();
 }
+
+namespace OPENSSL_ASN1_TEST {
+	void openssl_asn1_test1();
+	void openssl_asn1_test2();
+}

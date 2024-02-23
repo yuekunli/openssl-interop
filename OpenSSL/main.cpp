@@ -22,7 +22,7 @@ int main()
 	
 	//INTEROP_TEST_ECIES::test_ECIES();
 
-	INTEROP_TEST_ECDSA::test_ECDSA();
+	//INTEROP_TEST_ECDSA::test_ECDSA();
 
 	//INTEROP_TEST_DH::test_Diffie_Hellman();
 
@@ -43,4 +43,7 @@ int main()
 	//INTEROP_TEST_EAX::test3();
 	//INTEROP_TEST_EAX::test4();
 
+
+	//OPENSSL_ASN1_TEST::openssl_asn1_test1();
+	OPENSSL_ASN1_TEST::openssl_asn1_test2();
 }
