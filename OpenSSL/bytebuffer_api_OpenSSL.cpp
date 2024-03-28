@@ -18,6 +18,7 @@
 #include <openssl/param_build.h>
 #include <openssl/rand.h>
 #include <openssl/err.h>
+#include <openssl/provider.h>
 
 
 
@@ -106,6 +107,78 @@ byte* eax_decrypt(byte* data, int data_len, byte* key, int key_size, byte* iv, i
 char const *logMessage = "Result:%s,  Action:%s,  Code:%ul,  FromLower:%d,  Message:%s\n";
 
 
+// ===============================
+//  Lib context
+// ===============================
+
+OSSL_LIB_CTX* fips_libctx = NULL;
+OSSL_PROVIDER* base = NULL;
+OSSL_PROVIDER* fips = NULL;
+
+void initialize_fips_libctx()
+{
+    if (fips_libctx != NULL)
+        return;
+
+    fips_libctx = OSSL_LIB_CTX_new();
+    if (fips_libctx == NULL)
+    {
+        throw std::runtime_error("FAIL. Create new lib context");
+    }
+    if (!OSSL_LIB_CTX_load_config(fips_libctx, "C:\\temp\\a    b\\openssl_fips.cnf"))
+    {
+        OSSL_LIB_CTX_free(fips_libctx);
+        fips_libctx = NULL;
+        throw std::runtime_error("FAIL. Load config file for FIPS lib context");
+        return;
+    }
+    
+    base = OSSL_PROVIDER_load(fips_libctx, "base");
+    if (base == NULL)
+    {
+        throw std::runtime_error("FAIL. Load base provider");
+        return;
+    }
+
+    if (!OSSL_PROVIDER_set_default_search_path(fips_libctx, "C:\\temp"))
+    {
+        throw std::runtime_error("FAIL. set default search path for provider dll");
+        return;
+    }
+    /*
+    * It's possible to not call set_default_search_path and then give a full path to OSSL_PROVIDER_load.
+    * However, if I call load in such way: OSSL_PROVIDER_load(fips_libctx, "C:\\temp\\fips.dll");
+    * The dll will be loaded without problem, but it can't pass self test.
+    * In that way, the provider's name is literally identified as "C:\temp\fips.dll".
+    * And if in the config file I have a provider called "fips", these two won't be deemed the same.
+    * The fips' provider's module-mac should be present in the config file, than the self test will
+    * check that module-mac. But if the config file says the module-mac belongs to a provider called "fips",
+    * and I loaded a provider called "C:\temp\fips.dll". The one I loaded won't be treated same as the one
+    * owning that module-mac.
+    */
+
+    fips = OSSL_PROVIDER_load(fips_libctx, "fips");
+    if (fips == NULL)
+    {
+        throw std::runtime_error("FAIL. Load FIPS provider");
+        return;
+    }
+}
+
+void cleanup_fips_libctx()
+{
+    //if (fips_libctx != NULL)
+    //    OSSL_LIB_CTX_free(fips_libctx);
+
+    if (base != NULL)
+        OSSL_PROVIDER_unload(base);
+    if (fips != NULL)
+        OSSL_PROVIDER_unload(fips);
+
+    //fips_libctx = NULL;
+    base = fips = NULL;
+}
+
 // =========================
 // Random Number Generation
 // =========================
@@ -191,7 +264,6 @@ SecureHashState *SHInitialize(int hashingAlgorithm)
 {
     SecureHashState *pState = NULL;
     bool success = false;
-    //OSSL_LIB_CTX* libCtx = NULL;
 
     if ((pState = (SecureHashState*)OPENSSL_zalloc(sizeof(SecureHashState))) == NULL)
     {
@@ -200,17 +272,10 @@ SecureHashState *SHInitialize(int hashingAlgorithm)
     }
     pState->hashingAlgorithm = hashingAlgorithm;
 
-    //libCtx = OSSL_LIB_CTX_new();
-    //if (libCtx == NULL)
-    //{
-    //    LOG2("FAIL. Initialize lib context");
-    //    goto cleanup;
-    //}
-
     switch(pState->hashingAlgorithm)
     {
         case ___SECUREHASH_ALGORITHM_SHA256:
-            pState->pSha256 = EVP_MD_fetch(NULL /*libCtx*/, "SHA256", /*properties*/"fips=yes");
+            pState->pSha256 = EVP_MD_fetch(fips_libctx, "SHA256", /*properties*/"fips=yes");
             if (pState->pSha256 == NULL)
             {
                 LOG2("FAIL. Fetch SHA256 implementation");
@@ -236,7 +301,7 @@ SecureHashState *SHInitialize(int hashingAlgorithm)
             success = true;
             break;
         case ___SECUREHASH_ALGORITHM_SHA384:
-            pState->pSha384 = EVP_MD_fetch(NULL /*libCtx*/, "SHA384", /*properties*/"fips=yes");
+            pState->pSha384 = EVP_MD_fetch(fips_libctx, "SHA384", /*properties*/"fips=yes");
             if (pState->pSha384 == NULL)
             {
                 LOG2("FAIL. Fetch SHA384 implementation");
@@ -262,7 +327,7 @@ SecureHashState *SHInitialize(int hashingAlgorithm)
             success = true;
             break;
         case ___SECUREHASH_ALGORITHM_SHA512:
-            pState->pSha512 = EVP_MD_fetch(NULL /*libCtx*/, "SHA512", /*properties*/"fips=yes");
+            pState->pSha512 = EVP_MD_fetch(fips_libctx, "SHA512", /*properties*/"fips=yes");
             if (pState->pSha512 == NULL)
             {
                 LOG2("FAIL. Fetch SHA512 implementation");
@@ -323,8 +388,7 @@ SecureHashState *SHInitialize(int hashingAlgorithm)
         OPENSSL_free(pState);
         pState = NULL;
     }
-    //if (libCtx == NULL)
-    //    OSSL_LIB_CTX_free(libCtx);
+
     return pState;
 }
 
@@ -715,7 +779,7 @@ SymmetricCipher *CipherInitialize(int nAlgo, bool fEncrypt)
     pSymCipher->fEncrypt = fEncrypt;
     pSymCipher->nAlgorithm = nAlgo;
     pSymCipher->pCtx = EVP_CIPHER_CTX_new();
-    pSymCipher->pImplement = EVP_CIPHER_fetch(/*libctx*/ NULL, pChosen, /*property queue*/ "fips=yes");
+    pSymCipher->pImplement = EVP_CIPHER_fetch(fips_libctx, pChosen, /*property queue*/ "fips=yes");
     pSymCipher->pBIOInput = BIO_new(BIO_s_mem());
 
     return pSymCipher;
@@ -1633,7 +1697,7 @@ static EVP_PKEY *createPeerPKEY_DL(BIGNUM* pBNPrime, BIGNUM *pBNGenerator, byte 
     {
         goto done;
     }
-    ctx = EVP_PKEY_CTX_new_from_name(NULL, "DH", NULL);
+    ctx = EVP_PKEY_CTX_new_from_name(fips_libctx, "DH", NULL);
     if (ctx == NULL)
     {
         goto done;
@@ -1706,7 +1770,7 @@ static EVP_PKEY* createPeerPKEY_DL_WithNamedGroup(BIGNUM* pBNPrime, BIGNUM* pBNG
     {
         goto done;
     }
-    ctx = EVP_PKEY_CTX_new_from_name(NULL, "DH", NULL);
+    ctx = EVP_PKEY_CTX_new_from_name(fips_libctx, "DH", NULL);
     if (ctx == NULL)
     {
         goto done;
@@ -1842,7 +1906,7 @@ static EVP_PKEY *createPkeyWithOneKey_EC_combined_curve_keypair(byte *pKnownKey,
     {
         goto done;
     }
-    ctx = EVP_PKEY_CTX_new_from_name(NULL, "EC", NULL);
+    ctx = EVP_PKEY_CTX_new_from_name(fips_libctx, "EC", NULL);
     if (ctx == NULL)
     {
         goto done;
@@ -1881,7 +1945,7 @@ static EVP_PKEY *createPkeyWithOneKey_EC_curve_keypair_separate(byte *pKnownKey,
     *p++ = OSSL_PARAM_construct_utf8_string(OSSL_PKEY_PARAM_EC_FIELD_TYPE, (char*)"prime-field", 0);
     *p = OSSL_PARAM_construct_end();
 
-    curveCtx = EVP_PKEY_CTX_new_from_name(/*lib context*/NULL, "EC", /* prop query */ "fips=yes");
+    curveCtx = EVP_PKEY_CTX_new_from_name(fips_libctx, "EC", /* prop query */ "fips=yes");
 
     EVP_PKEY_keygen_init(curveCtx);
 
@@ -1889,7 +1953,7 @@ static EVP_PKEY *createPkeyWithOneKey_EC_curve_keypair_separate(byte *pKnownKey,
 
     EVP_PKEY_keygen(curveCtx, &curve);
 
-    keyCtx = EVP_PKEY_CTX_new_from_pkey(/*lib context*/NULL, curve, /*prop query*/ "fips=yes");
+    keyCtx = EVP_PKEY_CTX_new_from_pkey(fips_libctx, curve, /*prop query*/ "fips=yes");
     EVP_PKEY_fromdata_init(keyCtx);
     p = params;
     if (isPublic)
@@ -1935,7 +1999,7 @@ static EVP_PKEY* generate_EC_keypair_curve_keypair_separate()
     *p++ = OSSL_PARAM_construct_utf8_string(OSSL_PKEY_PARAM_EC_FIELD_TYPE, (char*)"prime-field", 0);
     *p = OSSL_PARAM_construct_end();
 
-    curveCtx = EVP_PKEY_CTX_new_from_name(/* library context */ NULL, "EC", /* prop query */ "fips=yes");
+    curveCtx = EVP_PKEY_CTX_new_from_name(fips_libctx, "EC", /* prop query */ "fips=yes");
     if (curveCtx == NULL)
     {
         goto done;
@@ -1953,7 +2017,7 @@ static EVP_PKEY* generate_EC_keypair_curve_keypair_separate()
         goto done;
     }
 
-    keyCtx = EVP_PKEY_CTX_new_from_pkey(/* library context */ NULL, curve, /*prop query*/ "fips=yes");
+    keyCtx = EVP_PKEY_CTX_new_from_pkey(fips_libctx, curve, /*prop query*/ "fips=yes");
     if (keyCtx == NULL)
     {
         goto done;
@@ -1989,7 +2053,7 @@ static EVP_PKEY* generate_EC_keypair_single_context()
 
     EVP_PKEY_CTX* ctx = NULL;
 
-    ctx = EVP_PKEY_CTX_new_from_name(/*lib context*/NULL, "EC", /*properties*/"fips=yes");
+    ctx = EVP_PKEY_CTX_new_from_name(fips_libctx, "EC", /*properties*/"fips=yes");
 
     r = EVP_PKEY_keygen_init(ctx);
 
@@ -2079,7 +2143,7 @@ static bool DhInitialize_DL_liyk(DHState* p)
     BIGNUM* pBNPubKey = NULL;
     bool success = false;
 
-    if ((pctx = EVP_PKEY_CTX_new_from_name(NULL, "DH", "fips=yes")) == NULL)
+    if ((pctx = EVP_PKEY_CTX_new_from_name(fips_libctx, "DH", "fips=yes")) == NULL)
         return NULL;
 
     params[0] = OSSL_PARAM_construct_utf8_string("group", (char*)"ffdhe2048", 0);
@@ -2159,7 +2223,7 @@ static bool DhInitialize_DL_AliceInitiate(DHState* p)
 
     OSSL_PARAM paramsArray[2];
 
-    dompCtx = EVP_PKEY_CTX_new_from_name(NULL, "DH", "fips=yes");
+    dompCtx = EVP_PKEY_CTX_new_from_name(fips_libctx, "DH", "fips=yes");
     if (dompCtx == NULL)
     {
         LOG3(logMessage, "FAIL", "Create new domain paramter context", 0, 0, "");
@@ -2295,7 +2359,7 @@ static bool DhInitialize_DL_BobRespond(DHState* p)
         LOG3(logMessage, "FAIL", "Build parameters", 0, 0, "");
         goto done;
     }
-    dompCtx = EVP_PKEY_CTX_new_from_name(NULL, "DH", "fips=yes");
+    dompCtx = EVP_PKEY_CTX_new_from_name(fips_libctx, "DH", "fips=yes");
     if (!dompCtx)
     {
         LOG3(logMessage, "FAIL", "Create new domain parameters context", 0, 0, "");
@@ -2382,7 +2446,7 @@ static bool DhInitialize_DL(DHState *dhState)
         }
     }
 
-    keyPairCtx = EVP_PKEY_CTX_new_from_pkey(NULL, dhState->dlDomain, "fips=yes");
+    keyPairCtx = EVP_PKEY_CTX_new_from_pkey(fips_libctx, dhState->dlDomain, "fips=yes");
     if (keyPairCtx == NULL)
     {
         LOG3(logMessage, "FAIL", "Create new key pair", 0, 0, "EVP_PKEY_CTX_new_from_pkey");
@@ -2588,7 +2652,7 @@ static bool deriveSecretDH(EVP_PKEY *peerKey, EVP_PKEY *selfKeyPair, byte **ppSe
     size_t secLen;
     bool success = false;
 
-    derivationCtx = EVP_PKEY_CTX_new_from_pkey(NULL, selfKeyPair, "fips=yes");
+    derivationCtx = EVP_PKEY_CTX_new_from_pkey(fips_libctx, selfKeyPair, "fips=yes");
 
     EVP_PKEY_derive_init(derivationCtx);
 
@@ -2727,7 +2791,7 @@ static void derDecodeECPkey(EVP_PKEY **ppPkey, byte const *encodedKey, size_t en
     int selection = publicOrPrivate ? EVP_PKEY_PUBLIC_KEY : EVP_PKEY_KEYPAIR;
     char const * input_struct = publicOrPrivate ? "SubjectPublicKeyInfo" : "PrivateKeyInfo";
 
-    ctx = OSSL_DECODER_CTX_new_for_pkey(ppPkey, "DER", input_struct, "EC", selection, /*lib context*/NULL, /*properties*/"fips=yes");
+    ctx = OSSL_DECODER_CTX_new_for_pkey(ppPkey, "DER", input_struct, "EC", selection, fips_libctx, /*properties*/"fips=yes");
     r = OSSL_DECODER_from_data(ctx, &encodedKey, &encodedKeyLen);
     OSSL_DECODER_CTX_free(ctx);
 }
@@ -2751,7 +2815,7 @@ static int DsaGenerateKeyPairInPlainBinary(byte **ppPriKey, int *pnPriKeyLen, by
 
     EVP_PKEY_CTX *curveCtx = NULL, *keyCtx = NULL;
 
-    curveCtx = EVP_PKEY_CTX_new_from_name(/* lib context */ NULL, "EC", /* prop query */ "fips=yes");
+    curveCtx = EVP_PKEY_CTX_new_from_name(fips_libctx, "EC", /* prop query */ "fips=yes");
 
     EVP_PKEY_keygen_init(curveCtx);
 
@@ -2759,7 +2823,7 @@ static int DsaGenerateKeyPairInPlainBinary(byte **ppPriKey, int *pnPriKeyLen, by
 
     EVP_PKEY_generate(curveCtx, &curve);
 
-    keyCtx = EVP_PKEY_CTX_new_from_pkey(/* lib context */ NULL, curve, /*prop query*/ "fips=yes");
+    keyCtx = EVP_PKEY_CTX_new_from_pkey(fips_libctx, curve, /*prop query*/ "fips=yes");
     EVP_PKEY_keygen_init(keyCtx);
     EVP_PKEY_generate(keyCtx, &pkey);
 
@@ -2992,7 +3056,7 @@ static int generateDerEncodedEcdsaSignature(byte *pDataBuffer, int nDataBufferLe
 
     digestCtx = EVP_MD_CTX_create();
 
-    EVP_DigestSignInit_ex(digestCtx, /* pkey ctx */NULL, "SHA512", /*lib context*/NULL, /* props */"fips=yes", pkey, /* params */NULL);
+    EVP_DigestSignInit_ex(digestCtx, /* pkey ctx */NULL, "SHA512", fips_libctx, /* props */"fips=yes", pkey, /* params */NULL);
     EVP_DigestSignUpdate(digestCtx, pDataBuffer, nDataBufferLength);
 
     size_t sig_len;
@@ -3041,7 +3105,7 @@ static int verifyDerEncodedEcdsaSignature(byte *pDataBuffer, int nDataBufferLeng
 
     digestCtx = EVP_MD_CTX_create();
 
-    EVP_DigestVerifyInit_ex(digestCtx, /*pkey ctx*/NULL, "SHA512", /*lib context*/NULL, /* props */"fips=yes", pkey, /*params*/ NULL);
+    EVP_DigestVerifyInit_ex(digestCtx, /*pkey ctx*/NULL, "SHA512", fips_libctx, /* props */"fips=yes", pkey, /*params*/ NULL);
 
     EVP_DigestVerifyUpdate(digestCtx, pDataBuffer, nDataBufferLength);
 
@@ -3172,7 +3236,7 @@ static byte* p1363KeyDerive(byte *sec, int secLen, int neededKeyLen)
     EVP_MD *sha1;
     EVP_MD_CTX *ctx;
 
-    sha1 = EVP_MD_fetch(/*lib context*/NULL, "SHA1", /*properties*/"fips=yes");
+    sha1 = EVP_MD_fetch(fips_libctx, "SHA1", /*properties*/"fips=yes");
     ctx = EVP_MD_CTX_new();
     r = EVP_DigestInit(ctx, sha1);
     int nDigestLen = EVP_MD_get_size(sha1);
@@ -3212,7 +3276,7 @@ static byte *computeHmacSha1(byte *key, int keyLen, byte *pData, int dataLen, in
     EVP_MAC *hmac = NULL;
     EVP_MAC_CTX *hmacCtx = NULL;
 
-    hmac = EVP_MAC_fetch(/*lib context*/NULL, "HMAC", /*properties*/ "fips=yes");
+    hmac = EVP_MAC_fetch(fips_libctx, "HMAC", /*properties*/ "fips=yes");
     hmacCtx = EVP_MAC_CTX_new(hmac);
 
     OSSL_PARAM params[3];
@@ -3399,7 +3463,7 @@ byte* generateCMAC_3(byte* plaintext, int plaintextLength, byte* key, int key_si
     OSSL_PARAM* p = params;
     char cipher_name[] = "AES-128-CBC";
 
-    cmac = EVP_MAC_fetch(NULL/*lib context*/, "CMAC", "fips=yes"/*property queue*/);
+    cmac = EVP_MAC_fetch(fips_libctx, "CMAC", "fips=yes"/*property queue*/);
 
     ctx = EVP_MAC_CTX_new(cmac);
 
@@ -3436,7 +3500,7 @@ bool verifyCMAC_3(byte* plaintext, int plaintextLength, byte* key, int key_size,
     OSSL_PARAM* p = params;
     char cipher_name[] = "AES-128-CBC";
 
-    cmac = EVP_MAC_fetch(NULL/*lib context*/, "CMAC", "fips=yes"/*property queue*/);
+    cmac = EVP_MAC_fetch(fips_libctx, "CMAC", "fips=yes"/*property queue*/);
 
     ctx = EVP_MAC_CTX_new(cmac);
 
@@ -3477,7 +3541,7 @@ byte* aes128_block_encrypt(byte* data, int data_len, byte* key)
     byte* out = (byte*)OPENSSL_zalloc(data_len);
     int aes_len = 0;
 
-    aes = EVP_CIPHER_fetch(NULL/*lib context*/, "AES-128-ECB", "fips=yes"/*property queue*/);
+    aes = EVP_CIPHER_fetch(fips_libctx, "AES-128-ECB", "fips=yes"/*property queue*/);
     aesctx = EVP_CIPHER_CTX_new();
 
     EVP_EncryptInit_ex(aesctx, aes, NULL/*implementation*/, key, NULL/*iv*/);
@@ -3499,7 +3563,7 @@ byte* aes128_block_decrypt(byte* data, int data_len, byte* key)
     byte* out = (byte*)OPENSSL_zalloc(data_len);
     int aes_len = 0;
 
-    aes = EVP_CIPHER_fetch(NULL/*lib context*/, "AES-128-ECB", "fips=yes"/*property queue*/);
+    aes = EVP_CIPHER_fetch(fips_libctx, "AES-128-ECB", "fips=yes"/*property queue*/);
     aesctx = EVP_CIPHER_CTX_new();
 
     EVP_DecryptInit_ex(aesctx, aes, NULL/*implementation*/, key, NULL/*iv*/);
@@ -3525,7 +3589,7 @@ byte* aes128_block_encrypt_incremental(byte* data, int data_len, byte* key)
 
     int aes_len = 0;
 
-    aes = EVP_CIPHER_fetch(NULL/*lib context*/, "AES-128-ECB", "fips=yes"/*property queue*/);
+    aes = EVP_CIPHER_fetch(fips_libctx, "AES-128-ECB", "fips=yes"/*property queue*/);
     aesctx = EVP_CIPHER_CTX_new();
 
     EVP_EncryptInit_ex(aesctx, aes, NULL/*implementation*/, key, NULL/*iv*/);
@@ -3554,7 +3618,7 @@ byte* aes128_block_decrypt_incremental(byte* data, int data_len, byte* key)
     byte* out = (byte*)OPENSSL_zalloc(data_len);
     int aes_len = 0;
 
-    aes = EVP_CIPHER_fetch(NULL/*lib context*/, "AES-128-ECB", "fips=yes"/*property queue*/);
+    aes = EVP_CIPHER_fetch(fips_libctx, "AES-128-ECB", "fips=yes"/*property queue*/);
     aesctx = EVP_CIPHER_CTX_new();
 
     EVP_DecryptInit_ex(aesctx, aes, NULL/*implementation*/, key, NULL/*iv*/);

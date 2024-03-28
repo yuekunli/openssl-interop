@@ -4,6 +4,14 @@
 
 namespace BYTE_BUFFERIZED_OPENSSL {
 
+	// ===================
+	//  lib context
+	// ===================
+
+	void initialize_fips_libctx();
+	void cleanup_fips_libctx();
+
+
 	// =========================
 	// Random Number Generation
 	// =========================

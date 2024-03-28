@@ -57,3 +57,7 @@ namespace OPENSSL_ASN1_TEST {
 	void openssl_asn1_test1();
 	void openssl_asn1_test2();
 }
+
+namespace OPENSSL_TEST_LIBCTX_PROVIDER {
+	void test();
+}

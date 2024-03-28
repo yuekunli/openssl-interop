@@ -45,5 +45,7 @@ int main()
 
 
 	//OPENSSL_ASN1_TEST::openssl_asn1_test1();
-	OPENSSL_ASN1_TEST::openssl_asn1_test2();
+	//OPENSSL_ASN1_TEST::openssl_asn1_test2();
+
+	OPENSSL_TEST_LIBCTX_PROVIDER::test();
 }
