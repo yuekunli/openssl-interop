@@ -61,3 +61,7 @@ namespace OPENSSL_ASN1_TEST {
 namespace OPENSSL_TEST_LIBCTX_PROVIDER {
 	void test();
 }
+
+namespace OPENSSL_TEST_BIO {
+	void test1();
+}

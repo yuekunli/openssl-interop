@@ -1038,7 +1038,8 @@ namespace BYTE_BUFFERIZED_CRYPTOPP {
 		case 2:
 			return 256;
 		case 3:
-			return 256; // need to change this to 128 if I want to test crypto++ <--> OpenSSL interoperability, and if I take open source OpenSSL *as it is*.
+			return 128; // need to change this to 128 if I want to test crypto++ <--> OpenSSL interoperability, and if I take open source OpenSSL *as it is*.
+						// crypto++ can support wider range of IV length, adaptiva uses 256
 		case 4:
 			return 8;
 		}

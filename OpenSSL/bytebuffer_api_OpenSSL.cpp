@@ -36,6 +36,8 @@ namespace AUXILIARY {
 
 namespace BYTE_BUFFERIZED_OPENSSL {
 
+//char const * propertyString = "fips=yes";
+char const* propertyString = NULL;
 
 #define ___DH1024 1
 #define ___DH2048 2
@@ -60,7 +62,8 @@ namespace BYTE_BUFFERIZED_OPENSSL {
 
 #define ___IV_LENGTH_AES256_CBC 16
 #define ___IV_LENGTH_AES256_EAX 256
-#define ___IV_LENGTH_AES256_GCM 256   // need to change this to 128 if I take open source OpenSSL *as it is*
+#define ___IV_LENGTH_AES256_GCM 128   // need to change this to 128 if I take open source OpenSSL *as it is*. OpenSSL doesn't even support IV longer than 128.
+                                        // if I give a 256-byte IV to OpenSSL, EVP_EncryptInit_ex (or EVP_EncryptInit_ex2) call doesn't even succeed.
 #define ___IV_LENGTH_TRIPLE_DES_CBC 8
 
 
@@ -125,7 +128,7 @@ void initialize_fips_libctx()
     {
         throw std::runtime_error("FAIL. Create new lib context");
     }
-    if (!OSSL_LIB_CTX_load_config(fips_libctx, "C:\\temp\\a    b\\openssl_fips.cnf"))
+    if (!OSSL_LIB_CTX_load_config(fips_libctx, "C:\\temp\\openssl.cnf"))
     {
         OSSL_LIB_CTX_free(fips_libctx);
         fips_libctx = NULL;
@@ -157,7 +160,7 @@ void initialize_fips_libctx()
     * owning that module-mac.
     */
 
-    fips = OSSL_PROVIDER_load(fips_libctx, "fips");
+    fips = OSSL_PROVIDER_load(fips_libctx, "fips2");
     if (fips == NULL)
     {
         throw std::runtime_error("FAIL. Load FIPS provider");
@@ -167,17 +170,89 @@ void initialize_fips_libctx()
 
 void cleanup_fips_libctx()
 {
-    //if (fips_libctx != NULL)
-    //    OSSL_LIB_CTX_free(fips_libctx);
-
     if (base != NULL)
+    {
         OSSL_PROVIDER_unload(base);
+        base = NULL;
+    }
     if (fips != NULL)
+    {
         OSSL_PROVIDER_unload(fips);
+        fips = NULL;
+    }
 
-    //fips_libctx = NULL;
-    base = fips = NULL;
+    if (fips_libctx != NULL)
+        OSSL_LIB_CTX_free(fips_libctx);
+
+    fips_libctx = NULL;
 }
+
+
+// ===========================
+// BIO (Buffered I/O
+// ===========================
+
+void read_from_BIO()
+{
+    BIO* pBIO = BIO_new(BIO_s_mem());
+
+    unsigned char* p = (unsigned char*)malloc(100);
+
+    for (int i = 0; i < 100; i++)
+        *(p+i) = (unsigned char)i;
+
+    BIO_write(pBIO, p, 100);
+
+    memset(p, 0, 100);
+
+    size_t readbytes = 0;
+
+    BIO_read_ex(pBIO, p, 70, &readbytes);
+
+    memset(p, 0, 100);
+
+    BIO_read_ex(pBIO, p, 70, &readbytes);
+
+    std::cout << readbytes << std::endl;
+
+    std::cout << (int)(p[0]) << " " << (int)(p[29]) << "\n";
+
+    free(p);
+
+    BIO_set_flags(pBIO, BIO_FLAGS_MEM_RDONLY);
+    BIO_free(pBIO);
+}
+
+
+void set_BIO_position()
+{
+    BIO* pBIO = BIO_new(BIO_s_mem());
+
+    unsigned char* p = (unsigned char*)malloc(100);
+
+    for (int i = 0; i < 100; i++)
+        *(p + i) = (unsigned char)i;
+
+    BIO_write(pBIO, p, 100);
+
+    memset(p, 0, 100);
+
+    BIO_seek(pBIO, 66);
+
+    size_t readbytes = 0;
+
+    BIO_read_ex(pBIO, p, 100, &readbytes);
+
+    std::cout << readbytes << std::endl;
+
+    std::cout << (int)(p[0]) << " " << (int)(p[29]) << "\n";
+
+    free(p);
+
+    BIO_set_flags(pBIO, BIO_FLAGS_MEM_RDONLY);
+    BIO_free(pBIO);
+}
+
 
 // =========================
 // Random Number Generation
@@ -275,7 +350,7 @@ SecureHashState *SHInitialize(int hashingAlgorithm)
     switch(pState->hashingAlgorithm)
     {
         case ___SECUREHASH_ALGORITHM_SHA256:
-            pState->pSha256 = EVP_MD_fetch(fips_libctx, "SHA256", /*properties*/"fips=yes");
+            pState->pSha256 = EVP_MD_fetch(fips_libctx, "SHA256", /*properties*/propertyString);
             if (pState->pSha256 == NULL)
             {
                 LOG2("FAIL. Fetch SHA256 implementation");
@@ -301,7 +376,7 @@ SecureHashState *SHInitialize(int hashingAlgorithm)
             success = true;
             break;
         case ___SECUREHASH_ALGORITHM_SHA384:
-            pState->pSha384 = EVP_MD_fetch(fips_libctx, "SHA384", /*properties*/"fips=yes");
+            pState->pSha384 = EVP_MD_fetch(fips_libctx, "SHA384", /*properties*/propertyString);
             if (pState->pSha384 == NULL)
             {
                 LOG2("FAIL. Fetch SHA384 implementation");
@@ -327,7 +402,7 @@ SecureHashState *SHInitialize(int hashingAlgorithm)
             success = true;
             break;
         case ___SECUREHASH_ALGORITHM_SHA512:
-            pState->pSha512 = EVP_MD_fetch(fips_libctx, "SHA512", /*properties*/"fips=yes");
+            pState->pSha512 = EVP_MD_fetch(fips_libctx, "SHA512", /*properties*/propertyString);
             if (pState->pSha512 == NULL)
             {
                 LOG2("FAIL. Fetch SHA512 implementation");
@@ -693,10 +768,13 @@ struct SymmetricCipher_t
     int nBytesToBeSkipped;
     int nBytesToBeInjected;
     byte *pBytesToBeInjected;
+    int nBytesAlreadyInjected;
 
     BIO *pBIOInput;
+    BIO* pBIOOutput;
     unsigned char *psInput;
     int nInputSize;
+    bool fOpensslProcessed;
 };
 typedef struct SymmetricCipher_t SymmetricCipher;
 typedef struct SymmetricCipher_t Cipher;
@@ -779,8 +857,14 @@ SymmetricCipher *CipherInitialize(int nAlgo, bool fEncrypt)
     pSymCipher->fEncrypt = fEncrypt;
     pSymCipher->nAlgorithm = nAlgo;
     pSymCipher->pCtx = EVP_CIPHER_CTX_new();
-    pSymCipher->pImplement = EVP_CIPHER_fetch(fips_libctx, pChosen, /*property queue*/ "fips=yes");
+    pSymCipher->pImplement = EVP_CIPHER_fetch(fips_libctx, pChosen, /*property queue*/ propertyString);
     pSymCipher->pBIOInput = BIO_new(BIO_s_mem());
+    pSymCipher->pBIOOutput = BIO_new(BIO_s_mem());
+    pSymCipher->nBytesToBeSkipped = 0;
+    pSymCipher->nBytesToBeInjected = 0;
+    pSymCipher->pBytesToBeInjected = NULL;
+    pSymCipher->nBytesAlreadyInjected = 0;
+    pSymCipher->fOpensslProcessed = false;
 
     return pSymCipher;
 }
@@ -887,6 +971,13 @@ bool CipherRelease(SymmetricCipher *pSymCipher)
             BIO_set_flags(pSymCipher->pBIOInput, BIO_FLAGS_MEM_RDONLY); // very necessary
             BIO_free(pSymCipher->pBIOInput);
         }
+
+        if (pSymCipher->pBIOOutput != NULL)
+        {
+            BIO_set_flags(pSymCipher->pBIOOutput, BIO_FLAGS_MEM_RDONLY); // very necessary
+            BIO_free(pSymCipher->pBIOOutput);
+        }
+
         OPENSSL_free(pSymCipher);
     }
     return true;
@@ -907,6 +998,7 @@ bool CipherReset(SymmetricCipher *pSymCipher)
     }
     pSymCipher->nInputSize = 0;
     BIO_reset(pSymCipher->pBIOInput);
+    BIO_reset(pSymCipher->pBIOOutput);
 
     pSymCipher->nBytesToBeSkipped = 0;
     if (pSymCipher->pBytesToBeInjected != NULL)
@@ -915,6 +1007,9 @@ bool CipherReset(SymmetricCipher *pSymCipher)
         pSymCipher->pBytesToBeInjected = NULL;
         pSymCipher->nBytesToBeInjected = 0;
     }
+    pSymCipher->nBytesToBeSkipped = 0;
+    pSymCipher->nBytesAlreadyInjected = 0;
+    pSymCipher->fOpensslProcessed = false;
     return true;
 }
 
@@ -935,26 +1030,17 @@ bool CipherEndInput(SymmetricCipher* pSymCipher)
 
 
 
-static int CipherRetrieveEncryptionOutput_AES_EAX(SymmetricCipher* pSymCipher, byte* pOutput, int nOffset, int nLength)
+static bool CipherRetrieveEncryptionOutput_AES_EAX(SymmetricCipher* pSymCipher)
 {
     byte* pAlgorithmOutput;
-
-    if (nLength < pSymCipher->nBytesToBeInjected + pSymCipher->nInputSize + 16)
-    {
-        LOG3(logMessage, "WARN", "provided output buffer is shorter than minimum required");
-        return 0;
-    }
+    int nOutputSize = pSymCipher->nInputSize + 16;
 
     pAlgorithmOutput = eax_encrypt(pSymCipher->psInput, pSymCipher->nInputSize, pSymCipher->pKey, pSymCipher->nKeyLength, pSymCipher->pInitialVector, pSymCipher->nInitialVectorLength);
 
-    if (pSymCipher->nBytesToBeInjected > 0)
-        memcpy(pOutput + nOffset, pSymCipher->pBytesToBeInjected, pSymCipher->nBytesToBeInjected);
-
-    memcpy(pOutput + nOffset + pSymCipher->nBytesToBeInjected, pAlgorithmOutput, pSymCipher->nInputSize + 16);
-
+    BIO_write(pSymCipher->pBIOOutput, pAlgorithmOutput, nOutputSize);
     OPENSSL_free(pAlgorithmOutput);
 
-    return pSymCipher->nBytesToBeInjected + pSymCipher->nInputSize + 16;
+    return true;
 }
 
 
@@ -967,18 +1053,12 @@ static int CipherRetrieveEncryptionOutput_AES_EAX(SymmetricCipher* pSymCipher, b
 *  as long as the receiver knows the length of the injection. We don't include length of the injection in
 *  the output, the caller has to communicate that information to the receiver.
 */
-static int CipherRetrieveEncryptionOutput_AES_GCM(SymmetricCipher* pSymCipher, byte* pOutput, int nOffset, int nLength)
+static bool CipherRetrieveEncryptionOutput_AES_GCM(SymmetricCipher* pSymCipher)
 {
     byte* pAlgorithmOutput;
-    int len = 0;
+    int len = 0, tmpLen = 0;
     byte tag[16];
     OSSL_PARAM params[2] = { OSSL_PARAM_END, OSSL_PARAM_END };
-
-    if (nLength < pSymCipher->nBytesToBeInjected + pSymCipher->nInputSize + sizeof(tag))
-    {
-        LOG3(logMessage, "WARN", "provided output buffer is shorter than minimum required");
-        return 0;
-    }
 
     pAlgorithmOutput = (byte*)OPENSSL_zalloc(pSymCipher->nInputSize);
 
@@ -989,29 +1069,25 @@ static int CipherRetrieveEncryptionOutput_AES_GCM(SymmetricCipher* pSymCipher, b
         LOG3(logMessage, "ERROR", "output size not equal to estimation");
     }
 
-    EVP_EncryptFinal_ex(pSymCipher->pCtx, NULL /*can this be NULL?*/, &len); // purpose is to compute tag
+    EVP_EncryptFinal_ex(pSymCipher->pCtx, NULL /*can this be NULL?*/, &tmpLen); // purpose is to compute tag
     
     params[0] = OSSL_PARAM_construct_octet_string(OSSL_CIPHER_PARAM_AEAD_TAG, tag, sizeof(tag));
 
     EVP_CIPHER_CTX_get_params(pSymCipher->pCtx, params);
 
-    if (pSymCipher->nBytesToBeInjected > 0)
-        memcpy(pOutput + nOffset, pSymCipher->pBytesToBeInjected, pSymCipher->nBytesToBeInjected);
-
-    memcpy(pOutput + nOffset + pSymCipher->nBytesToBeInjected, pAlgorithmOutput, pSymCipher->nInputSize);
-    memcpy(pOutput + nOffset + pSymCipher->nBytesToBeInjected + pSymCipher->nInputSize, tag, sizeof(tag));
+    BIO_write(pSymCipher->pBIOOutput, pAlgorithmOutput, len);
+    BIO_write(pSymCipher->pBIOOutput, tag, 16);
 
     OPENSSL_free(pAlgorithmOutput);
 
-    return pSymCipher->nBytesToBeInjected + pSymCipher->nInputSize + sizeof(tag);
+    return true;
 }
 
-static int CipherRetrieveEncryptionOutput_CBC(SymmetricCipher* pSymCipher, byte* pOutput, int nOffset, int nLength)
+static bool CipherRetrieveEncryptionOutput_CBC(SymmetricCipher* pSymCipher)
 {
     int nEstimatedOutputSize;
     byte* pAlgorithmOutput;
     int len = 0, nConfirmedOutputSize = 0;
-    int nInject = 0, nCopy = 0;
 
     nEstimatedOutputSize = pSymCipher->nInputSize + (pSymCipher->nBlockSize - pSymCipher->nInputSize % pSymCipher->nBlockSize);
 
@@ -1022,57 +1098,30 @@ static int CipherRetrieveEncryptionOutput_CBC(SymmetricCipher* pSymCipher, byte*
     EVP_EncryptFinal_ex(pSymCipher->pCtx, pAlgorithmOutput + len, &len);
     nConfirmedOutputSize += len; // this "len" will be final block of encryted data, the residual of real data + pad, it should be equal to block size
 
-    // why would anyone skip the output of encryption for CBC mode?
-    if (pSymCipher->nBytesToBeSkipped > 0)
-    {
-        LOG3(logMessage, "ERROR", "Deliver encryption output", 0, 0, "Encryption output is partially skipped");
-        return 0;
-    }
+    BIO_write(pSymCipher->pBIOOutput, pAlgorithmOutput, nConfirmedOutputSize);
 
-    nInject = min(nLength, pSymCipher->nBytesToBeInjected);
-    if (nInject > 0)
-        memcpy(pOutput + nOffset, pSymCipher->pBytesToBeInjected, nInject);
-
-    nCopy = min(nLength - nInject, nConfirmedOutputSize);
-    if (nCopy < nConfirmedOutputSize)
-    {
-        LOG3(logMessage, "ERROR", "Deliver encryption output", 0, 0, "Not entire encryption output is delivered");
-    }
-    memcpy(pOutput + nOffset + nInject, pAlgorithmOutput, nCopy);
-    return nCopy;
+    OPENSSL_free(pAlgorithmOutput);
+    return true;
 }
 
-static int CipherRetrieveDecryptionOutput_AES_EAX(SymmetricCipher* pSymCipher, byte* pOutput, int nOffset, int nLength)
+static bool CipherRetrieveDecryptionOutput_AES_EAX(SymmetricCipher* pSymCipher)
 {    
-    int nInject = 0, nCopy = 0;
     int nCipherTextSize = pSymCipher->nInputSize - 16;
 
     byte* pAlgorithmOutput = eax_decrypt(pSymCipher->psInput, pSymCipher->nInputSize, pSymCipher->pKey, pSymCipher->nKeyLength, pSymCipher->pInitialVector, pSymCipher->nInitialVectorLength);
-
-    nInject = min(nLength, pSymCipher->nBytesToBeInjected);
-    if (nInject > 0)
-        memcpy(pOutput + nOffset, pSymCipher->pBytesToBeInjected, nInject);
-
-    nCopy = 0;
-    if (nInject < nLength)
-    {
-        nCopy = min(nLength - nInject, nCipherTextSize - pSymCipher->nBytesToBeSkipped);
-        memcpy(pOutput + nOffset + nInject, pAlgorithmOutput + pSymCipher->nBytesToBeSkipped, nCopy);
-    }
-
+    BIO_write(pSymCipher->pBIOOutput, pAlgorithmOutput, nCipherTextSize);
     OPENSSL_free(pAlgorithmOutput);
 
-    return nInject + nCopy;
+    return true;
 }
 
 
 // If there were injected bytes in front of the output of encryption, the caller of this function should strip off those injected bytes
-static int CipherRetrieveDecryptionOutput_AES_GCM(SymmetricCipher* pSymCipher, byte* pOutput, int nOffset, int nLength)
+static bool CipherRetrieveDecryptionOutput_AES_GCM(SymmetricCipher* pSymCipher)
 {
     int nCipherTextSize;
     byte* pAlgorithmOutput;
-    int len = 0, nConfirmedOutputSize = 0;
-    int nInject = 0, nCopy = 0;
+    int len = 0, tmpLen = 0;
     byte tag[16];
     byte* pTagStart;
 
@@ -1097,23 +1146,14 @@ static int CipherRetrieveDecryptionOutput_AES_GCM(SymmetricCipher* pSymCipher, b
     EVP_CIPHER_CTX_set_params(pSymCipher->pCtx, params);
 
     // verify tag
-    EVP_DecryptFinal_ex(pSymCipher->pCtx, NULL/*can this be NULL?*/, &len); // must call final if there is padding
+    EVP_DecryptFinal_ex(pSymCipher->pCtx, NULL/*can this be NULL?*/, &tmpLen); // must call final if there is padding
     
 
-    nInject = min(nLength, pSymCipher->nBytesToBeInjected);
-    if (nInject > 0)
-        memcpy(pOutput + nOffset, pSymCipher->pBytesToBeInjected, nInject);
-
-    nCopy = 0;
-    if (nInject < nLength)
-    {
-        nCopy = min(nLength - nInject, nCipherTextSize - pSymCipher->nBytesToBeSkipped);
-        memcpy(pOutput + nOffset + nInject, pAlgorithmOutput + pSymCipher->nBytesToBeSkipped, nCopy);
-    }
+    BIO_write(pSymCipher->pBIOOutput, pAlgorithmOutput, len);
 
     OPENSSL_free(pAlgorithmOutput);
     
-    return nInject + nCopy;
+    return true;
 }
 
 /*
@@ -1123,12 +1163,11 @@ static int CipherRetrieveDecryptionOutput_AES_GCM(SymmetricCipher* pSymCipher, b
 * we know the length of the bytes spat out by encryption algorithm.
 * And we know there are 4 bytes salt at the beginning.
 */
-static int CipherRetrieveDecryptionOutput_CBC(SymmetricCipher* pSymCipher, byte* pOutput, int nOffset, int nLength)
+static bool CipherRetrieveDecryptionOutput_CBC(SymmetricCipher* pSymCipher)
 {
     int nEstimatedOutputSize;
     byte* pAlgorithmOutput;
     int len = 0, nConfirmedOutputSize = 0;
-    int nInject = 0, nCopy = 0;
 
     nEstimatedOutputSize = pSymCipher->nInputSize; 
     // This "nInputSize" is the length of the bytes that are fed to the decryption algorithm.
@@ -1143,51 +1182,93 @@ static int CipherRetrieveDecryptionOutput_CBC(SymmetricCipher* pSymCipher, byte*
     EVP_DecryptFinal_ex(pSymCipher->pCtx, pAlgorithmOutput + len, &len); // must call final if there is padding
     nConfirmedOutputSize += len; // this "len" will be the final block of real data (not including pad)
 
-    nInject = min(nLength, pSymCipher->nBytesToBeInjected);
-    if (nInject > 0)
-        memcpy(pOutput + nOffset, pSymCipher->pBytesToBeInjected, nInject);
-
-    nCopy = 0;
-    if (nInject < nLength)
-    {
-        nCopy = min(nLength - nInject, nConfirmedOutputSize - pSymCipher->nBytesToBeSkipped);
-        memcpy(pOutput + nOffset + nInject, pAlgorithmOutput + pSymCipher->nBytesToBeSkipped, nCopy);
-    }
-    return nInject + nCopy;
+    BIO_write(pSymCipher->pBIOOutput, pAlgorithmOutput, nConfirmedOutputSize);
+    OPENSSL_free(pAlgorithmOutput);
+    return true;
 }
 
+
+/**
+*      |---------------------------------------------------------|
+*      \__________________/\_____________________________________/
+*           nOffset                     nLength
+*      \_________________________pOutput_________________________/
+* 
+*/
 int CipherRetrieveOutput(SymmetricCipher *pSymCipher, byte *pOutput, int nOffset, int nLength)
 {
-    if (pSymCipher->fEncrypt)
-    {
-        switch (pSymCipher->nAlgorithm)
-        {
-        case ___ENCRYPTION_ALGORITHM_AES256_CBC:
-        case ___ENCRYPTION_ALGORITHM_TRIPLE_DES_CBC:
-            return CipherRetrieveEncryptionOutput_CBC(pSymCipher, pOutput, nOffset, nLength);
+    int nInject = 0, nCopy = 0;
 
-        case ___ENCRYPTION_ALGORITHM_AES256_GCM:
-            return CipherRetrieveEncryptionOutput_AES_GCM(pSymCipher, pOutput, nOffset, nLength);
-        case ___ENCRYPTION_ALGORITHM_AES256_EAX:
-            return CipherRetrieveEncryptionOutput_AES_EAX(pSymCipher, pOutput, nOffset, nLength);
-        }
-    }
-    else
+    if (pSymCipher->fOpensslProcessed == false)
     {
-        switch (pSymCipher->nAlgorithm)
+        if (pSymCipher->fEncrypt)
         {
+            switch (pSymCipher->nAlgorithm)
+            {
             case ___ENCRYPTION_ALGORITHM_AES256_CBC:
             case ___ENCRYPTION_ALGORITHM_TRIPLE_DES_CBC:
-                return CipherRetrieveDecryptionOutput_CBC(pSymCipher, pOutput, nOffset, nLength);
+                CipherRetrieveEncryptionOutput_CBC(pSymCipher);
+                break;
 
             case ___ENCRYPTION_ALGORITHM_AES256_GCM:
-                return CipherRetrieveDecryptionOutput_AES_GCM(pSymCipher, pOutput, nOffset, nLength);
+                CipherRetrieveEncryptionOutput_AES_GCM(pSymCipher);
+                break;
+            case ___ENCRYPTION_ALGORITHM_AES256_EAX:
+                CipherRetrieveEncryptionOutput_AES_EAX(pSymCipher);
+                break;
+            }
+        }
+        else
+        {
+            switch (pSymCipher->nAlgorithm)
+            {
+            case ___ENCRYPTION_ALGORITHM_AES256_CBC:
+            case ___ENCRYPTION_ALGORITHM_TRIPLE_DES_CBC:
+                CipherRetrieveDecryptionOutput_CBC(pSymCipher);
+                break;
+
+            case ___ENCRYPTION_ALGORITHM_AES256_GCM:
+                CipherRetrieveDecryptionOutput_AES_GCM(pSymCipher);
+                break;
 
             case ___ENCRYPTION_ALGORITHM_AES256_EAX:
-                return CipherRetrieveDecryptionOutput_AES_EAX(pSymCipher, pOutput, nOffset, nLength);
+                CipherRetrieveDecryptionOutput_AES_EAX(pSymCipher);
+                break;
+            }
         }
+        pSymCipher->fOpensslProcessed = true;
     }
-    return -1;
+
+
+    if (pSymCipher->nBytesToBeSkipped > 0)
+    {
+        BYTE* pSkip = (BYTE*)OPENSSL_zalloc(pSymCipher->nBytesToBeSkipped);
+        int bytesRead = BIO_read(pSymCipher->pBIOOutput, pSkip, pSymCipher->nBytesToBeSkipped);
+        if (bytesRead < pSymCipher->nBytesToBeSkipped)
+        {
+            OPENSSL_free(pSkip);
+            return 0;
+        }
+        pSymCipher->nBytesToBeSkipped -= bytesRead;
+        OPENSSL_free(pSkip);
+    }
+
+    nInject = min(nLength, pSymCipher->nBytesToBeInjected);
+    if (nInject > 0)
+    {
+        BYTE* pInjectStart = (pSymCipher->pBytesToBeInjected + pSymCipher->nBytesAlreadyInjected);
+        memcpy(pOutput + nOffset, pInjectStart, nInject);
+        pSymCipher->nBytesToBeInjected -= nInject;
+        pSymCipher->nBytesAlreadyInjected += nInject;
+    }
+    nCopy = nLength - nInject;
+    int bytesRead = 0;
+    if (nCopy > 0)
+    {
+        bytesRead = BIO_read(pSymCipher->pBIOOutput, pOutput + nOffset + nInject, nCopy);
+    }
+
+    return bytesRead;
 }
 
 int CipherSkipBytes(SymmetricCipher *pSymCipher, int nToBeSkippedByteCount)
@@ -1335,7 +1416,8 @@ byte *encryptBufferUsingJavaformat(int encrypAlgo, byte *key, int nKeyLength, by
         pEncryptedBuffer = NULL;
         goto done;
     }
-
+    // pIV and pDuplicateKey are allocated here, but must not be freed here.
+    // OpenSSL still holds onto the memory, they are freed when destroying OpenSSL CIPHER and CIPHER CTX
     if (CipherSubmitInput(pSymCipher, salt, 0, 4) == NULL)
     {
         OPENSSL_free(pEncryptedBuffer);
@@ -1945,7 +2027,7 @@ static EVP_PKEY *createPkeyWithOneKey_EC_curve_keypair_separate(byte *pKnownKey,
     *p++ = OSSL_PARAM_construct_utf8_string(OSSL_PKEY_PARAM_EC_FIELD_TYPE, (char*)"prime-field", 0);
     *p = OSSL_PARAM_construct_end();
 
-    curveCtx = EVP_PKEY_CTX_new_from_name(fips_libctx, "EC", /* prop query */ "fips=yes");
+    curveCtx = EVP_PKEY_CTX_new_from_name(fips_libctx, "EC", /* prop query */ propertyString);
 
     EVP_PKEY_keygen_init(curveCtx);
 
@@ -1953,7 +2035,7 @@ static EVP_PKEY *createPkeyWithOneKey_EC_curve_keypair_separate(byte *pKnownKey,
 
     EVP_PKEY_keygen(curveCtx, &curve);
 
-    keyCtx = EVP_PKEY_CTX_new_from_pkey(fips_libctx, curve, /*prop query*/ "fips=yes");
+    keyCtx = EVP_PKEY_CTX_new_from_pkey(fips_libctx, curve, /*prop query*/ propertyString);
     EVP_PKEY_fromdata_init(keyCtx);
     p = params;
     if (isPublic)
@@ -1999,7 +2081,7 @@ static EVP_PKEY* generate_EC_keypair_curve_keypair_separate()
     *p++ = OSSL_PARAM_construct_utf8_string(OSSL_PKEY_PARAM_EC_FIELD_TYPE, (char*)"prime-field", 0);
     *p = OSSL_PARAM_construct_end();
 
-    curveCtx = EVP_PKEY_CTX_new_from_name(fips_libctx, "EC", /* prop query */ "fips=yes");
+    curveCtx = EVP_PKEY_CTX_new_from_name(fips_libctx, "EC", /* prop query */ propertyString);
     if (curveCtx == NULL)
     {
         goto done;
@@ -2017,7 +2099,7 @@ static EVP_PKEY* generate_EC_keypair_curve_keypair_separate()
         goto done;
     }
 
-    keyCtx = EVP_PKEY_CTX_new_from_pkey(fips_libctx, curve, /*prop query*/ "fips=yes");
+    keyCtx = EVP_PKEY_CTX_new_from_pkey(fips_libctx, curve, /*prop query*/ propertyString);
     if (keyCtx == NULL)
     {
         goto done;
@@ -2053,7 +2135,7 @@ static EVP_PKEY* generate_EC_keypair_single_context()
 
     EVP_PKEY_CTX* ctx = NULL;
 
-    ctx = EVP_PKEY_CTX_new_from_name(fips_libctx, "EC", /*properties*/"fips=yes");
+    ctx = EVP_PKEY_CTX_new_from_name(fips_libctx, "EC", /*properties*/propertyString);
 
     r = EVP_PKEY_keygen_init(ctx);
 
@@ -2143,7 +2225,7 @@ static bool DhInitialize_DL_liyk(DHState* p)
     BIGNUM* pBNPubKey = NULL;
     bool success = false;
 
-    if ((pctx = EVP_PKEY_CTX_new_from_name(fips_libctx, "DH", "fips=yes")) == NULL)
+    if ((pctx = EVP_PKEY_CTX_new_from_name(fips_libctx, "DH", propertyString)) == NULL)
         return NULL;
 
     params[0] = OSSL_PARAM_construct_utf8_string("group", (char*)"ffdhe2048", 0);
@@ -2223,7 +2305,7 @@ static bool DhInitialize_DL_AliceInitiate(DHState* p)
 
     OSSL_PARAM paramsArray[2];
 
-    dompCtx = EVP_PKEY_CTX_new_from_name(fips_libctx, "DH", "fips=yes");
+    dompCtx = EVP_PKEY_CTX_new_from_name(fips_libctx, "DH", propertyString);
     if (dompCtx == NULL)
     {
         LOG3(logMessage, "FAIL", "Create new domain paramter context", 0, 0, "");
@@ -2359,7 +2441,7 @@ static bool DhInitialize_DL_BobRespond(DHState* p)
         LOG3(logMessage, "FAIL", "Build parameters", 0, 0, "");
         goto done;
     }
-    dompCtx = EVP_PKEY_CTX_new_from_name(fips_libctx, "DH", "fips=yes");
+    dompCtx = EVP_PKEY_CTX_new_from_name(fips_libctx, "DH", propertyString);
     if (!dompCtx)
     {
         LOG3(logMessage, "FAIL", "Create new domain parameters context", 0, 0, "");
@@ -2446,7 +2528,7 @@ static bool DhInitialize_DL(DHState *dhState)
         }
     }
 
-    keyPairCtx = EVP_PKEY_CTX_new_from_pkey(fips_libctx, dhState->dlDomain, "fips=yes");
+    keyPairCtx = EVP_PKEY_CTX_new_from_pkey(fips_libctx, dhState->dlDomain, propertyString);
     if (keyPairCtx == NULL)
     {
         LOG3(logMessage, "FAIL", "Create new key pair", 0, 0, "EVP_PKEY_CTX_new_from_pkey");
@@ -2652,7 +2734,7 @@ static bool deriveSecretDH(EVP_PKEY *peerKey, EVP_PKEY *selfKeyPair, byte **ppSe
     size_t secLen;
     bool success = false;
 
-    derivationCtx = EVP_PKEY_CTX_new_from_pkey(fips_libctx, selfKeyPair, "fips=yes");
+    derivationCtx = EVP_PKEY_CTX_new_from_pkey(fips_libctx, selfKeyPair, propertyString);
 
     EVP_PKEY_derive_init(derivationCtx);
 
@@ -2777,7 +2859,7 @@ static void derEncodeECPkey(byte **output, size_t *outputLen, EVP_PKEY *pkey, in
 
     int selection = publicOrPrivate ? EVP_PKEY_PUBLIC_KEY : EVP_PKEY_KEYPAIR;
     char const * output_struct = publicOrPrivate ? "SubjectPublicKeyInfo" : "PrivateKeyInfo";
-    ctx = OSSL_ENCODER_CTX_new_for_pkey(pkey, selection, "DER", output_struct, /*properties*/"fips=yes");
+    ctx = OSSL_ENCODER_CTX_new_for_pkey(pkey, selection, "DER", output_struct, /*properties*/propertyString);
 
     r = OSSL_ENCODER_to_data(ctx, output, outputLen);
     OSSL_ENCODER_CTX_free(ctx);
@@ -2791,7 +2873,7 @@ static void derDecodeECPkey(EVP_PKEY **ppPkey, byte const *encodedKey, size_t en
     int selection = publicOrPrivate ? EVP_PKEY_PUBLIC_KEY : EVP_PKEY_KEYPAIR;
     char const * input_struct = publicOrPrivate ? "SubjectPublicKeyInfo" : "PrivateKeyInfo";
 
-    ctx = OSSL_DECODER_CTX_new_for_pkey(ppPkey, "DER", input_struct, "EC", selection, fips_libctx, /*properties*/"fips=yes");
+    ctx = OSSL_DECODER_CTX_new_for_pkey(ppPkey, "DER", input_struct, "EC", selection, fips_libctx, /*properties*/propertyString);
     r = OSSL_DECODER_from_data(ctx, &encodedKey, &encodedKeyLen);
     OSSL_DECODER_CTX_free(ctx);
 }
@@ -2815,7 +2897,7 @@ static int DsaGenerateKeyPairInPlainBinary(byte **ppPriKey, int *pnPriKeyLen, by
 
     EVP_PKEY_CTX *curveCtx = NULL, *keyCtx = NULL;
 
-    curveCtx = EVP_PKEY_CTX_new_from_name(fips_libctx, "EC", /* prop query */ "fips=yes");
+    curveCtx = EVP_PKEY_CTX_new_from_name(fips_libctx, "EC", /* prop query */ propertyString);
 
     EVP_PKEY_keygen_init(curveCtx);
 
@@ -2823,7 +2905,7 @@ static int DsaGenerateKeyPairInPlainBinary(byte **ppPriKey, int *pnPriKeyLen, by
 
     EVP_PKEY_generate(curveCtx, &curve);
 
-    keyCtx = EVP_PKEY_CTX_new_from_pkey(fips_libctx, curve, /*prop query*/ "fips=yes");
+    keyCtx = EVP_PKEY_CTX_new_from_pkey(fips_libctx, curve, /*prop query*/ propertyString);
     EVP_PKEY_keygen_init(keyCtx);
     EVP_PKEY_generate(keyCtx, &pkey);
 
@@ -3056,7 +3138,7 @@ static int generateDerEncodedEcdsaSignature(byte *pDataBuffer, int nDataBufferLe
 
     digestCtx = EVP_MD_CTX_create();
 
-    EVP_DigestSignInit_ex(digestCtx, /* pkey ctx */NULL, "SHA512", fips_libctx, /* props */"fips=yes", pkey, /* params */NULL);
+    EVP_DigestSignInit_ex(digestCtx, /* pkey ctx */NULL, "SHA512", fips_libctx, /* props */propertyString, pkey, /* params */NULL);
     EVP_DigestSignUpdate(digestCtx, pDataBuffer, nDataBufferLength);
 
     size_t sig_len;
@@ -3105,7 +3187,7 @@ static int verifyDerEncodedEcdsaSignature(byte *pDataBuffer, int nDataBufferLeng
 
     digestCtx = EVP_MD_CTX_create();
 
-    EVP_DigestVerifyInit_ex(digestCtx, /*pkey ctx*/NULL, "SHA512", fips_libctx, /* props */"fips=yes", pkey, /*params*/ NULL);
+    EVP_DigestVerifyInit_ex(digestCtx, /*pkey ctx*/NULL, "SHA512", fips_libctx, /* props */propertyString, pkey, /*params*/ NULL);
 
     EVP_DigestVerifyUpdate(digestCtx, pDataBuffer, nDataBufferLength);
 
@@ -3236,7 +3318,7 @@ static byte* p1363KeyDerive(byte *sec, int secLen, int neededKeyLen)
     EVP_MD *sha1;
     EVP_MD_CTX *ctx;
 
-    sha1 = EVP_MD_fetch(fips_libctx, "SHA1", /*properties*/"fips=yes");
+    sha1 = EVP_MD_fetch(fips_libctx, "SHA1", /*properties*/propertyString);
     ctx = EVP_MD_CTX_new();
     r = EVP_DigestInit(ctx, sha1);
     int nDigestLen = EVP_MD_get_size(sha1);
@@ -3276,7 +3358,7 @@ static byte *computeHmacSha1(byte *key, int keyLen, byte *pData, int dataLen, in
     EVP_MAC *hmac = NULL;
     EVP_MAC_CTX *hmacCtx = NULL;
 
-    hmac = EVP_MAC_fetch(fips_libctx, "HMAC", /*properties*/ "fips=yes");
+    hmac = EVP_MAC_fetch(fips_libctx, "HMAC", /*properties*/ propertyString);
     hmacCtx = EVP_MAC_CTX_new(hmac);
 
     OSSL_PARAM params[3];
@@ -3463,7 +3545,7 @@ byte* generateCMAC_3(byte* plaintext, int plaintextLength, byte* key, int key_si
     OSSL_PARAM* p = params;
     char cipher_name[] = "AES-128-CBC";
 
-    cmac = EVP_MAC_fetch(fips_libctx, "CMAC", "fips=yes"/*property queue*/);
+    cmac = EVP_MAC_fetch(fips_libctx, "CMAC", propertyString/*property queue*/);
 
     ctx = EVP_MAC_CTX_new(cmac);
 
@@ -3500,7 +3582,7 @@ bool verifyCMAC_3(byte* plaintext, int plaintextLength, byte* key, int key_size,
     OSSL_PARAM* p = params;
     char cipher_name[] = "AES-128-CBC";
 
-    cmac = EVP_MAC_fetch(fips_libctx, "CMAC", "fips=yes"/*property queue*/);
+    cmac = EVP_MAC_fetch(fips_libctx, "CMAC", propertyString/*property queue*/);
 
     ctx = EVP_MAC_CTX_new(cmac);
 
@@ -3541,7 +3623,7 @@ byte* aes128_block_encrypt(byte* data, int data_len, byte* key)
     byte* out = (byte*)OPENSSL_zalloc(data_len);
     int aes_len = 0;
 
-    aes = EVP_CIPHER_fetch(fips_libctx, "AES-128-ECB", "fips=yes"/*property queue*/);
+    aes = EVP_CIPHER_fetch(fips_libctx, "AES-128-ECB", propertyString/*property queue*/);
     aesctx = EVP_CIPHER_CTX_new();
 
     EVP_EncryptInit_ex(aesctx, aes, NULL/*implementation*/, key, NULL/*iv*/);
@@ -3563,7 +3645,7 @@ byte* aes128_block_decrypt(byte* data, int data_len, byte* key)
     byte* out = (byte*)OPENSSL_zalloc(data_len);
     int aes_len = 0;
 
-    aes = EVP_CIPHER_fetch(fips_libctx, "AES-128-ECB", "fips=yes"/*property queue*/);
+    aes = EVP_CIPHER_fetch(fips_libctx, "AES-128-ECB", propertyString/*property queue*/);
     aesctx = EVP_CIPHER_CTX_new();
 
     EVP_DecryptInit_ex(aesctx, aes, NULL/*implementation*/, key, NULL/*iv*/);
@@ -3589,7 +3671,7 @@ byte* aes128_block_encrypt_incremental(byte* data, int data_len, byte* key)
 
     int aes_len = 0;
 
-    aes = EVP_CIPHER_fetch(fips_libctx, "AES-128-ECB", "fips=yes"/*property queue*/);
+    aes = EVP_CIPHER_fetch(fips_libctx, "AES-128-ECB", propertyString/*property queue*/);
     aesctx = EVP_CIPHER_CTX_new();
 
     EVP_EncryptInit_ex(aesctx, aes, NULL/*implementation*/, key, NULL/*iv*/);
@@ -3618,7 +3700,7 @@ byte* aes128_block_decrypt_incremental(byte* data, int data_len, byte* key)
     byte* out = (byte*)OPENSSL_zalloc(data_len);
     int aes_len = 0;
 
-    aes = EVP_CIPHER_fetch(fips_libctx, "AES-128-ECB", "fips=yes"/*property queue*/);
+    aes = EVP_CIPHER_fetch(fips_libctx, "AES-128-ECB", propertyString/*property queue*/);
     aesctx = EVP_CIPHER_CTX_new();
 
     EVP_DecryptInit_ex(aesctx, aes, NULL/*implementation*/, key, NULL/*iv*/);
