@@ -353,7 +353,7 @@ namespace INTEROP_TEST_SYMMETRICCRYPT {
 			BYTE_BUFFERIZED_CRYPTOPP::CipherEndInput(pSymCipher3);
 			BYTE_BUFFERIZED_CRYPTOPP::CipherRetrieveOutput(pSymCipher3, decryptedBuffer, 0, decryptedBufferSize / 5);
 			BYTE_BUFFERIZED_CRYPTOPP::CipherRetrieveOutput(pSymCipher3, decryptedBuffer, decryptedBufferSize / 5, decryptedBufferSize / 5);
-			BYTE_BUFFERIZED_CRYPTOPP::CipherRetrieveOutput(pSymCipher3, decryptedBuffer, decryptedBufferSize / 5, decryptedBufferSize - decryptedBufferSize / 5 * 2);
+			BYTE_BUFFERIZED_CRYPTOPP::CipherRetrieveOutput(pSymCipher3, decryptedBuffer, decryptedBufferSize / 5 * 2, decryptedBufferSize - decryptedBufferSize / 5 * 2);
 			BYTE_BUFFERIZED_CRYPTOPP::CipherRelease(pSymCipher3);
 		}
 		else if (decrypt_lib == LIB::OPENSSL)
@@ -433,7 +433,7 @@ namespace INTEROP_TEST_SYMMETRICCRYPT {
 		test_buffered_gradual_io(ALGO::AES_GCM, LIB::OPENSSL, LIB::OPENSSL, LIB::CRYPTOPP);
 		test_buffered_gradual_io(ALGO::AES_GCM, LIB::OPENSSL, LIB::OPENSSL, LIB::OPENSSL);
 		*/
-
+		test_buffered_gradual_io(ALGO::AES_GCM, LIB::OPENSSL, LIB::OPENSSL, LIB::OPENSSL);
 		
 		
 		
@@ -461,7 +461,7 @@ namespace INTEROP_TEST_SYMMETRICCRYPT {
 		// the "xxxxx" is the output of decrypting the tag.
 		// strcmp only compares two strings up to the '\0', so they are equal.
 
-		test_buffered_gradual_io_Cipher_as_BIO_filter(ALGO::AES_GCM, LIB::OPENSSL, LIB::OPENSSL, LIB::OPENSSL);
+		//test_buffered_gradual_io_Cipher_as_BIO_filter(ALGO::AES_GCM, LIB::OPENSSL, LIB::OPENSSL, LIB::OPENSSL);
 		//test_buffered_gradual_io_Cipher_as_BIO_filter(ALGO::AES_GCM, LIB::OPENSSL, LIB::CRYPTOPP, LIB::OPENSSL);
 
 	}
@@ -761,4 +761,5 @@ namespace INTEROP_TEST_SYMMETRICCRYPT {
 		if (decryptedBuffer)
 			free(decryptedBuffer);
 	}
+
 }

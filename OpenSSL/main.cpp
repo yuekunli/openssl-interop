@@ -26,7 +26,9 @@ int main()
 
 	//INTEROP_TEST_DH::test_Diffie_Hellman();
 
-	INTEROP_TEST_SYMMETRICCRYPT::test_Symmetric_Cipher();
+	//INTEROP_TEST_SYMMETRICCRYPT::test_Symmetric_Cipher();
+
+
 	
 
 	//INTEROP_TEST_CMAC::test1();
@@ -50,4 +52,7 @@ int main()
 	//OPENSSL_TEST_LIBCTX_PROVIDER::test();
 
 	//OPENSSL_TEST_BIO::test1();
+
+	//CIPHER_OPENSSL2_TEST::test();
+	CIPHER_OPENSSL2_TEST::test2();
 }

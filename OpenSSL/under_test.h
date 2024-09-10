@@ -65,3 +65,8 @@ namespace OPENSSL_TEST_LIBCTX_PROVIDER {
 namespace OPENSSL_TEST_BIO {
 	void test1();
 }
+
+namespace CIPHER_OPENSSL2_TEST {
+	void test();
+	void test2();
+}
