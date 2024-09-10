@@ -87,7 +87,6 @@ namespace CO2 {
         BIO* pBIOCipher;
         bool fBioConnected;
 
-
         byte* big_N;
         byte* big_H;
         byte* big_C;

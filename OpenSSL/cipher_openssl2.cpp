@@ -359,6 +359,9 @@ namespace CO2 {
         pBIOCipherOutputBackup = BIO_new(BIO_s_mem());
         pBIOCipher = NULL;
         fBioConnected = false;
+        big_N = big_H = big_C = NULL;
+        isInputEnd = false;
+        data_size = 0;
     }
 
     AESEAX::~AESEAX()
@@ -396,8 +399,12 @@ namespace CO2 {
         BIO_free(pBIOCipherOutputBackup);
     }
 
-    bool AESEAX::setKeyAndIV(byte* pKey, int nKeyLength, byte* pIV, int nIVLength)
+    bool AESEAX::setKeyAndIV(byte* _pKey, int _nKeyLength, byte* _pIV, int _nIVLength)
     {
+        this->pKey = _pKey;
+        this->nKeyLength = _nKeyLength;
+        this->pIV = _pIV;
+        this->nIVLength = _nIVLength;
         EVP_CIPHER* evp_cipher = EVP_CIPHER_fetch(NULL/*lib context*/, "AES-128-CTR", NULL/*prop queue*/);
         int tag_size;
         big_N = cmac_with_prefix(pIV, nIVLength, 0, pKey, nKeyLength, &tag_size);

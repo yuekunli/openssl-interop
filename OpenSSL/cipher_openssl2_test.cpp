@@ -62,7 +62,7 @@ namespace CIPHER_OPENSSL2_TEST {
 	}
 
 
-	static void test_buffered_gradual_io_Cipher_as_BIO_filter(ALGO algo, LIB keygen, LIB encrypt_lib, LIB decrypt_lib)
+	static void test_AESGCM_buffered_gradual_io_Cipher_as_BIO_filter(ALGO algo, LIB keygen, LIB encrypt_lib, LIB decrypt_lib)
 	{
 		std::stringstream ss;
 		ss << "Symmetric Cipher buffered gradual I/O using Cipher as BIO filter  " << algo_names[algo]
@@ -202,9 +202,146 @@ namespace CIPHER_OPENSSL2_TEST {
 	}
 
 
+	static void test_AESEAX_buffered_gradual_io_Cipher_as_BIO_filter(ALGO algo, LIB keygen, LIB encrypt_lib, LIB decrypt_lib)
+	{
+		std::stringstream ss;
+		ss << "Symmetric Cipher buffered gradual I/O using Cipher as BIO filter  " << algo_names[algo]
+			<< "    " << lib_names[keygen] << " generate keys and IV  "
+			<< lib_names[encrypt_lib] << " encrypt   "
+			<< lib_names[decrypt_lib] << " decrypt\n";
+
+		char const* ptr_clear_text = clearText2;
+		int clear_text_length = strlen(ptr_clear_text) + 1;
+
+		int encryptedBufferSize = get_encryption_output_size(algo, clear_text_length);
+		byte* encryptedBuffer = (byte*)malloc(encryptedBufferSize);
+
+		int decryptedBufferSize = 40;
+		byte* decryptedBuffer = (byte*)malloc(decryptedBufferSize);
+
+		int keyLen = key_length[algo];
+		//byte* key = (byte*)malloc(keyLen);
+		byte key[16] = {
+			0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
+			0xa1, 0xa2, 0xa3, 0xa4, 0xa5, 0xa6, 0xa7, 0xa8
+		};
+
+
+		//const int regular_iv_length[5] = { 0, 16, 256, 12, 8 };
+		//int ivLen = iv_length[algo];
+		int ivLen = 20;
+		//byte* iv = (byte*)malloc(ivLen);
+		byte iv[20] = {
+			0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28,
+			0x29, 0x2a, 0x2b, 0x2c, 0x31, 0x32, 0x33, 0x34,
+			0x51, 0x52, 0x53, 0x54
+		};
+
+		/*
+		if (keygen == LIB::OPENSSL)
+		{
+			BYTE_BUFFERIZED_OPENSSL::RngFillByteArrayRegion(key, 0, keyLen);
+			BYTE_BUFFERIZED_OPENSSL::RngFillByteArrayRegion(iv, 0, ivLen);
+		}
+		*/
+		if (encrypt_lib == LIB::OPENSSL)
+		{
+			BYTE_BUFFERIZED_OPENSSL::SymmetricCipher* pSymCipher = BYTE_BUFFERIZED_OPENSSL::CipherInitialize(algo, true);
+			byte* keyDup = (byte*)malloc(keyLen);
+			byte* ivDup = (byte*)malloc(ivLen);
+			memcpy(keyDup, key, keyLen);
+			memcpy(ivDup, iv, ivLen);
+			BYTE_BUFFERIZED_OPENSSL::CipherSetKeyAndInitialVector(pSymCipher, keyDup, keyLen, ivDup, ivLen);
+			BYTE_BUFFERIZED_OPENSSL::CipherSubmitInput(pSymCipher, (byte*)ptr_clear_text, 0, clear_text_length / 4);
+			BYTE_BUFFERIZED_OPENSSL::CipherSubmitInput(pSymCipher, (byte*)ptr_clear_text, clear_text_length / 4, clear_text_length / 4);
+			BYTE_BUFFERIZED_OPENSSL::CipherSubmitInput(pSymCipher, (byte*)ptr_clear_text, clear_text_length / 4 * 2, clear_text_length - clear_text_length / 4 * 2);
+			BYTE_BUFFERIZED_OPENSSL::CipherEndInput(pSymCipher);
+			BYTE_BUFFERIZED_OPENSSL::CipherRetrieveOutput(pSymCipher, encryptedBuffer, 0, encryptedBufferSize / 5);
+			BYTE_BUFFERIZED_OPENSSL::CipherRetrieveOutput(pSymCipher, encryptedBuffer, encryptedBufferSize / 5, encryptedBufferSize / 5);
+			BYTE_BUFFERIZED_OPENSSL::CipherRetrieveOutput(pSymCipher, encryptedBuffer, encryptedBufferSize / 5 * 2, encryptedBufferSize - encryptedBufferSize / 5 * 2);
+			BYTE_BUFFERIZED_OPENSSL::CipherRelease(pSymCipher);
+		}
+		else if (encrypt_lib == LIB::OPENSSL_BIO)
+		{
+
+			byte* keyDup2 = (byte*)malloc(keyLen);
+			byte* ivDup2 = (byte*)malloc(ivLen);
+			memcpy(keyDup2, key, keyLen);
+			memcpy(ivDup2, iv, ivLen);
+
+			CO2::AESEAX* c = new CO2::AESEAX(true);
+			c->setKeyAndIV(keyDup2, keyLen, ivDup2, ivLen);
+
+			c->submitInput((byte*)ptr_clear_text, 0, clear_text_length / 4);
+			c->submitInput((byte*)ptr_clear_text, clear_text_length / 4, clear_text_length / 4);
+			c->submitInput((byte*)ptr_clear_text, clear_text_length / 4 * 2, clear_text_length - clear_text_length / 4 * 2);
+			c->endInput();
+			c->retrieveOutput(encryptedBuffer, 0, encryptedBufferSize / 5);
+			c->retrieveOutput(encryptedBuffer, encryptedBufferSize / 5, encryptedBufferSize / 5);
+			c->retrieveOutput(encryptedBuffer, encryptedBufferSize / 5 * 2, encryptedBufferSize - encryptedBufferSize / 5 * 2);
+			delete c;
+		}
+
+		if (decrypt_lib == LIB::OPENSSL)
+		{
+			BYTE_BUFFERIZED_CRYPTOPP::Cipher* pSymCipher3 = BYTE_BUFFERIZED_CRYPTOPP::CipherInitialize(algo, false);
+			byte* keyDup3 = (byte*)malloc(keyLen);
+			byte* ivDup3 = (byte*)malloc(ivLen);
+			memcpy(keyDup3, key, keyLen);
+			memcpy(ivDup3, iv, ivLen);
+			BYTE_BUFFERIZED_CRYPTOPP::CipherSetKeyAndInitialVector(pSymCipher3, keyDup3, keyLen, ivDup3, ivLen);
+			BYTE_BUFFERIZED_CRYPTOPP::CipherSubmitInput(pSymCipher3, encryptedBuffer, 0, encryptedBufferSize / 5);
+			BYTE_BUFFERIZED_CRYPTOPP::CipherSubmitInput(pSymCipher3, encryptedBuffer, encryptedBufferSize / 5, encryptedBufferSize / 5);
+			BYTE_BUFFERIZED_CRYPTOPP::CipherSubmitInput(pSymCipher3, encryptedBuffer, encryptedBufferSize / 5 * 2, encryptedBufferSize - encryptedBufferSize / 5 * 2);
+			BYTE_BUFFERIZED_CRYPTOPP::CipherEndInput(pSymCipher3);
+			BYTE_BUFFERIZED_CRYPTOPP::CipherRetrieveOutput(pSymCipher3, decryptedBuffer, 0, decryptedBufferSize / 5);
+			BYTE_BUFFERIZED_CRYPTOPP::CipherRetrieveOutput(pSymCipher3, decryptedBuffer, decryptedBufferSize / 5, decryptedBufferSize / 5);
+			BYTE_BUFFERIZED_CRYPTOPP::CipherRetrieveOutput(pSymCipher3, decryptedBuffer, decryptedBufferSize / 5 * 2, decryptedBufferSize - decryptedBufferSize / 5 * 2);
+			BYTE_BUFFERIZED_CRYPTOPP::CipherRelease(pSymCipher3);
+		}
+		else if (decrypt_lib == LIB::OPENSSL_BIO)
+		{
+			byte* keyDup4 = (byte*)malloc(keyLen);
+			byte* ivDup4 = (byte*)malloc(ivLen);
+			memcpy(keyDup4, key, keyLen);
+			memcpy(ivDup4, iv, ivLen);
+
+			CO2::AESEAX* c = new CO2::AESEAX(false);
+			c->setKeyAndIV(keyDup4, keyLen, ivDup4, ivLen);
+			c->submitInput(encryptedBuffer, 0, encryptedBufferSize / 5);
+			c->submitInput(encryptedBuffer, encryptedBufferSize / 5, encryptedBufferSize / 5);
+			c->submitInput(encryptedBuffer, encryptedBufferSize / 5 * 2, encryptedBufferSize - encryptedBufferSize / 5 * 2);
+			c->endInput();
+			c->retrieveOutput(decryptedBuffer, 0, decryptedBufferSize / 5);
+			c->retrieveOutput(decryptedBuffer, decryptedBufferSize / 5, decryptedBufferSize / 5);
+			c->retrieveOutput(decryptedBuffer, decryptedBufferSize / 5 * 2, decryptedBufferSize - decryptedBufferSize / 5 * 2);
+			delete c;
+		}
+
+		if (strcmp(ptr_clear_text, (char*)decryptedBuffer) == 0)
+		{
+			std::cout << "SUCCESS   " << ss.str();
+		}
+		else
+		{
+			std::cout << "FAIL   " << ss.str();
+		}
+
+		//if (key)
+			//free(key);
+		//if (iv)
+			//free(iv);
+		if (encryptedBuffer)
+			free(encryptedBuffer);
+		if (decryptedBuffer)
+			free(decryptedBuffer);
+	}
+
+
 	void test()
 	{
-		test_buffered_gradual_io_Cipher_as_BIO_filter(ALGO::AES_GCM, LIB::OPENSSL, LIB::OPENSSL, LIB::OPENSSL_BIO);
+		//test_AESGCM_buffered_gradual_io_Cipher_as_BIO_filter(ALGO::AES_GCM, LIB::OPENSSL, LIB::OPENSSL, LIB::OPENSSL_BIO);
+		test_AESEAX_buffered_gradual_io_Cipher_as_BIO_filter(ALGO::AES_EAX, LIB::OPENSSL, LIB::OPENSSL_BIO, LIB::OPENSSL);
 	}
 
 

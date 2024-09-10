@@ -923,7 +923,7 @@ bool CipherSetKeyAndInitialVector(SymmetricCipher *pSymCipher, byte *pKey, int n
             
             case ___ENCRYPTION_ALGORITHM_AES256_GCM:
 
-                ivlen = ___IV_LENGTH_AES256_GCM;
+                ivlen = nIVLength;
                 if (ivlen == 12)
                 {
                     EVP_DecryptInit_ex2(pSymCipher->pCtx, pSymCipher->pImplement, pKey, pIV, NULL);

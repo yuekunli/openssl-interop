@@ -53,6 +53,6 @@ int main()
 
 	//OPENSSL_TEST_BIO::test1();
 
-	//CIPHER_OPENSSL2_TEST::test();
-	CIPHER_OPENSSL2_TEST::test2();
+	CIPHER_OPENSSL2_TEST::test();
+	//CIPHER_OPENSSL2_TEST::test2();
 }
