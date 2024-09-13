@@ -2983,7 +2983,7 @@ int DsaGenerateKeyPair(byte **ppPriKey, int *pnPriKeyLen, byte **ppPubKey, int *
 // 30
 // 45
 // 02
-// 21
+// 21 <-- length of the next field (33 in this case)
 // 00 B2B31575F8536B284410D01217F688BE3A9FAF4BA0BA3A9093F983E40D630EC7
 // 02
 // 20
@@ -2998,11 +2998,13 @@ int DsaGenerateKeyPair(byte **ppPriKey, int *pnPriKeyLen, byte **ppPubKey, int *
 // 30
 // 44
 // 02
-// 1f
+// 1f <-- length is 31, next field only need 31 bytes
 //   431575F8536B284410D01217F688BE3A9FAF4BA0BA3A9093F983E40D630EC7
 // 02
 // 20
 // 22A7A25B01403CFF0D00B3B853D230F8E96FF832B15D4CCC75203CB65896A2D5
+
+
 
 
 static byte* findLengthAndStart(byte* input, int* length)
@@ -3531,6 +3533,13 @@ byte* DsaDecryptBuffer(byte* pPrivateKey, int nPrivateKeyLength, byte* pDataBuff
 }
 
 
+
+// +========================================+
+// |~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
+// |   Build AES EAX mode piece by piece    |
+// |~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
+// +========================================+
+
 // =============
 //   CMAC
 // =============
@@ -3610,9 +3619,9 @@ bool verifyCMAC_3(byte* plaintext, int plaintextLength, byte* key, int key_size,
 }
 
 
-// =======================
+// ======================================
 //   AES_ECB (no padding, no chaining)
-// =======================
+// ======================================
 
 
 byte* aes128_block_encrypt(byte* data, int data_len, byte* key)
@@ -3720,13 +3729,12 @@ byte* aes128_block_decrypt_incremental(byte* data, int data_len, byte* key)
 }
 
 
-
 // =====================
 //   EAX
 // =====================
 
-
-byte* aes128_ctr(byte* data, int data_len, byte* key, byte* iv)
+// manually using ECB mode to encrypt the counter and manually XOR the encrypted counters with input data
+byte* aes128_ctr_manual_ECB_mode(byte* data, int data_len, byte* key, byte* iv)
 {
     int r = data_len % 16;
     int blocks = r > 0 ? (data_len / 16 + 1) : (data_len / 16);
@@ -3761,8 +3769,21 @@ byte* aes128_ctr(byte* data, int data_len, byte* key, byte* iv)
     return out;
 }
 
+byte* aes128_ctr_using_CTR_mode(byte* data, int data_len, byte* key, byte* iv)
+{
+    byte* out = (byte*)OPENSSL_zalloc(data_len);
+    int len = 0;
+    EVP_CIPHER* c = EVP_CIPHER_fetch(NULL/*lib context*/, "AES-128-CTR", NULL/*prop queue*/);
+    EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
+    EVP_EncryptInit_ex2(ctx, c, key, iv, NULL);
+    EVP_CIPHER_CTX_set_padding(ctx, 0);
 
-//byte* generateCMAC_3(byte* plaintext, int plaintextLength, byte* key, int key_size, int* tag_size)
+    EVP_EncryptUpdate(ctx, out, &len, data, data_len);
+
+    EVP_CIPHER_CTX_free(ctx);
+    EVP_CIPHER_free(c);
+    return out;
+}
 
 
 byte* cmac_with_prefix(byte* data, int data_len, int prefix, byte* key, int key_size, int *tag_size)
@@ -3796,7 +3817,8 @@ byte* eax_encrypt(byte* data, int data_len, byte* key, int key_size, byte* iv, i
 
     byte* big_H = cmac_with_prefix(NULL, 0, 1, key, key_size, &tag_size);
 
-    byte* ciphertext = aes128_ctr(data, data_len, key, big_N);
+    byte* ciphertext = aes128_ctr_using_CTR_mode(data, data_len, key, big_N);
+    //                 aes128_ctr_manual_ECB_mode  also works
 
     byte* big_C = cmac_with_prefix(ciphertext, data_len, 2, key, key_size, &tag_size);
 
@@ -3842,7 +3864,8 @@ byte* eax_decrypt(byte* data, int data_len, byte* key, int key_size, byte* iv, i
         return NULL;
     }
 
-    byte* plaintext = aes128_ctr(data, text_len, key, big_N);
+    byte* plaintext = aes128_ctr_using_CTR_mode(data, text_len, key, big_N);
+    //                aes128_ctr_manual_ECB_mode   also works
     
     OPENSSL_free(big_N);
     OPENSSL_free(big_C);

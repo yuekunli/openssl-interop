@@ -2,7 +2,6 @@
 
 #include <Windows.h>
 
-
 #include <openssl/bn.h>
 #include <openssl/core_names.h>
 #include <openssl/params.h>
@@ -14,7 +13,7 @@
 #include <openssl/err.h>
 #include <openssl/provider.h>
 
-namespace CO2 {
+namespace OPENSSL_CIPHER_ARBITRARY_IO {
 
     class Cipher
     {
@@ -28,13 +27,11 @@ namespace CO2 {
         byte* pIV;
         int nIVLength;
 
-        int nBlockSize;
-
         int nBytesToBeSkipped;
         int nBytesToBeInjected;
         int nBytesAlreadyInjected;
         byte* pBytesToBeInjected;
-
+    public:
         virtual bool setKeyAndIV(byte* pKey, int nKeyLength, byte* pIV, int nIVLength) = 0;
 
         //virtual bool reset() = 0;
@@ -58,13 +55,43 @@ namespace CO2 {
         }
     };
 
+    class CBC : Cipher
+    {
+    protected:
+        BIO* pBIOOutput;
+        BIO* pBIOCipherFilter;
+        bool fBioConnected;
+        int nBlockSize;
+        char const* cipherName[2] = { "AES-128-CBC", "DES-EDE3-CBC" };
+        char const* pChosenCipherName;
+    public:
+        CBC(bool);
+        ~CBC();
+        bool setKeyAndIV(byte* pKey, int nKeyLength, byte* pIV, int nIvLength);
+        bool submitInput(byte* pInput, int nOffset, int nLength);
+        bool endInput();
+        int retrieveOutput(byte* pOutput, int nOffset, int nLength);
+    };
+
+    class AESCBC : CBC
+    {
+    public:
+        AESCBC(bool);
+        bool setKeyAndIV(byte* pKey, int nKeyLength, byte* pIV, int nIvLength);
+    };
+
+    class DES3CBC : CBC
+    {
+    public:
+        DES3CBC(bool);
+        bool setKeyAndIV(byte* pKey, int nKeyLength, byte* pIV, int nIvLength);
+    };
 
 	class AESGCM : Cipher
 	{
 		BIO* pBIOOutput;
 		BIO* pBIOCipher;
 		bool fBioConnected;
-		EVP_CIPHER* evp_cipher;
 
 		byte potentialTag[16];
 		int nBufferedPotentialTagLength;
@@ -77,24 +104,24 @@ namespace CO2 {
 		int retrieveOutput(byte* pOutput, int nOffset, int nLength);
 	};
 
-    byte* eax_encrypt(byte* data, int data_len, byte* key, int key_size, byte* iv, int iv_size);
-
-    
-
     class AESEAX : Cipher
     {
         BIO* pBIOOutput;
-        BIO* pBIOCipher;
+        BIO* pBIOCipherFilter;
         bool fBioConnected;
 
         byte* big_N;
         byte* big_H;
-        byte* big_C;
-
-        BIO* pBIOCipherOutputBackup;
+    
         int data_size;
 
+        BIO* pBIOCiphertextBackup;
+
         bool isInputEnd;
+        byte potentialTag[16];
+        int nBufferedPotentialTagLength;
+
+        bool isTagProcessed;
 
         void processTag();
 
@@ -107,5 +134,16 @@ namespace CO2 {
         int retrieveOutput(byte* pOutput, int nOffset, int nLength);
     };
 
-    
+
+    bool CipherSetKeyAndInitialVector(Cipher* pCipher, byte* pKey, int nKeyLength, byte* pIV, int nIVLength);
+
+    bool CipherSubmitInput(Cipher* pCipher, byte* pInput, int nOffset, int nLength);
+
+    bool CipherEndInput(Cipher* pCipher);
+
+    int CipherRetrieveOutput(Cipher* pCipher, byte* pOutput, int nOffset, int nLength);
+
+    Cipher* CipherInitialize(int nAlgorithm, bool isEncrypt);
+
+    bool CipherRelease(Cipher* p);
 }

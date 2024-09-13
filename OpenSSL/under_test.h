@@ -68,5 +68,4 @@ namespace OPENSSL_TEST_BIO {
 
 namespace CIPHER_OPENSSL2_TEST {
 	void test();
-	void test2();
 }
