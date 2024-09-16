@@ -14,7 +14,7 @@ namespace OPENSSL_ASN1_TEST {
 	*       OpenSSL internally serializes the OID into binary format and creates a dummy object with that OID
 	*  (2). search registered objects, looking the the one that matches the serialized OID
 	*/
-	void openssl_asn1_test1()
+	void numeric_dot_to_long_name()
 	{
 		string md5_dot_oid = "1.2.840.113549.2.5";
 
@@ -33,7 +33,7 @@ namespace OPENSSL_ASN1_TEST {
 	/*
 	* Convert binary OID to numeric-dot notation
 	*/
-	string openssl_asn1_test_oid_bin2dot(unsigned char* p, size_t length)
+	string encoded_oid_to_numeric_dot(unsigned char* p, size_t length)
 	{
 		stringstream ss1;
 
@@ -87,11 +87,11 @@ namespace OPENSSL_ASN1_TEST {
 	}
 
 
-	void openssl_asn1_test2()
+	void encoded_oid_to_numeric_dot_to_long_name()
 	{
 		unsigned char md5_oid_bin[] = { 0x2A, 0x86, 0x48, 0x86, 0xF7, 0x0D, 0x02, 0x05 };
 
-		string oid_dot = openssl_asn1_test_oid_bin2dot(md5_oid_bin, sizeof(md5_oid_bin));
+		string oid_dot = encoded_oid_to_numeric_dot(md5_oid_bin, sizeof(md5_oid_bin));
 
 		ASN1_OBJECT* md5_dummy_obj = OBJ_txt2obj(oid_dot.c_str(), 1/*not a name, construct an object instead of searching*/);
 

@@ -22,8 +22,6 @@ namespace BYTE_BUFFERIZED_OPENSSL {
 	void RngFillByteArrayRegion(byte* pArray, int nStartingOffset, int nBytes);
 
 
-
-
 	// ===========================
 	// Secure Hash  (SHA-2)
 	// ===========================

@@ -19,7 +19,6 @@ namespace BASIC_TEST {
 
 int main()
 {
-	
 	//INTEROP_TEST_ECIES::test_ECIES();
 
 	//INTEROP_TEST_ECDSA::test_ECDSA();
@@ -27,9 +26,6 @@ int main()
 	//INTEROP_TEST_DH::test_Diffie_Hellman();
 
 	//INTEROP_TEST_SYMMETRICCRYPT::test_Symmetric_Cipher();
-
-
-	
 
 	//INTEROP_TEST_CMAC::test1();
 	//INTEROP_TEST_CMAC::test2();
@@ -45,13 +41,14 @@ int main()
 	//INTEROP_TEST_EAX::test3();
 	//INTEROP_TEST_EAX::test4();
 
+	//OPENSSL_ASN1_TEST::numeric_dot_to_long_name();
+	//OPENSSL_ASN1_TEST::encoded_oid_to_numeric_dot_to_long_name();
 
-	//OPENSSL_ASN1_TEST::openssl_asn1_test1();
-	//OPENSSL_ASN1_TEST::openssl_asn1_test2();
+	//OPENSSL_LIBCTX_PROVIDER_TEST::initialize_fips_libctx();
+	//OPENSSL_LIBCTX_PROVIDER_TEST::cleanup_fips_libctx();
 
-	//OPENSSL_TEST_LIBCTX_PROVIDER::test();
+	//OPENSSL_BIO_TEST::read_from_BIO();
+	//OPENSSL_BIO_TEST::set_BIO_position();
 
-	//OPENSSL_TEST_BIO::test1();
-
-	CIPHER_OPENSSL2_TEST::test();
+	INTEROP_TEST_ARBITRARY_IO_CIPHER::test();
 }

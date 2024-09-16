@@ -19,7 +19,7 @@
 #include <Windows.h>
 #include <winsock.h>
 
-#include "cipher_openssl2.h"
+#include "arbitrary_io_cipher_OpenSSL.h"
 
 typedef unsigned char byte;
 
@@ -40,7 +40,7 @@ typedef unsigned char byte;
 
 #define ___KEY_TYPE_NONE 75
 
-namespace OPENSSL_CIPHER_ARBITRARY_IO {
+namespace ARBITRARY_IO_CIPHER_OPENSSL {
 
     OSSL_LIB_CTX* fips_libctx = NULL;
     char const* propertyString = NULL;
@@ -105,7 +105,7 @@ namespace OPENSSL_CIPHER_ARBITRARY_IO {
     }
 
 
-    byte* generateCMAC_3(byte* plaintext, int plaintextLength, byte* key, int key_size, int* tag_size)
+    static byte* generateCMAC_3(byte* plaintext, int plaintextLength, byte* key, int key_size, int* tag_size)
     {
         EVP_MAC* cmac = NULL;
         EVP_MAC_CTX* ctx = NULL;
@@ -141,7 +141,7 @@ namespace OPENSSL_CIPHER_ARBITRARY_IO {
         return tag;
     }
 
-    byte* cmac_with_prefix(byte* data, int data_len, int prefix, byte* key, int key_size, int* tag_size)
+    static byte* cmac_with_prefix(byte* data, int data_len, int prefix, byte* key, int key_size, int* tag_size)
     {
         size_t t = sizeof(prefix);
         size_t total = data_len + 16;
@@ -170,7 +170,7 @@ namespace OPENSSL_CIPHER_ARBITRARY_IO {
         pBIOCipherFilter = NULL;
         fBioConnected = false;
         big_N = big_H = NULL;
-        isInputEnd = false;
+        //isInputEnd = false;
         data_size = 0;
         nBufferedPotentialTagLength = 0;
         isTagProcessed = false;
@@ -276,7 +276,7 @@ namespace OPENSSL_CIPHER_ARBITRARY_IO {
 
     bool AESEAX::endInput()
     {
-        isInputEnd = true;
+        //isInputEnd = true;
         processTag();
         return true;
     }
@@ -330,16 +330,19 @@ namespace OPENSSL_CIPHER_ARBITRARY_IO {
 
             // bytesRead < nBytesToBeSkipped in general can happen and can be a valid situation.
             // Assuming I only give a little input, haven't called endInput yet.
-            // Calling retrieveOutput now. Now bytesRead can likely less than nBytesToBeSkipped.
+            // Calling retrieveOutput now. Now bytesRead can likely be less than nBytesToBeSkipped.
             // but I must not process tag now because I haven't called endInput
-            if (bytesRead < nBytesToBeSkipped && isInputEnd)
+            
+            if (bytesRead < nBytesToBeSkipped /* && isInputEnd */)
             {
-                processTag();
+                //processTag();
                 
                 // skipping output only makes sense on decryption.
                 // but on decryption, processing tag doesn't yield more output.
-                
+
+                nBytesToBeSkipped -= bytesRead;
                 OPENSSL_free(pSkip);
+
                 return 0;
             }
             nBytesToBeSkipped -= bytesRead;
@@ -365,19 +368,8 @@ namespace OPENSSL_CIPHER_ARBITRARY_IO {
 
             if (fEncrypt && !isTagProcessed)
             {
-                BIO_write(pBIOCiphertextBackup, pOutput + nOffset + nInject, bytesRead);  // !!!
+                BIO_write(pBIOCiphertextBackup, pOutput + nOffset + nInject, bytesRead);
             }
-            /*
-            if (bytesRead < nCopy && isInputEnd && !isTagProcessed)
-            {
-                processTag();
-                if (fEncrypt)
-                {
-                    int diff = nCopy - bytesRead;
-                    bytesRead2 = BIO_read(pBIOOutput, pOutput + nOffset + nInject + bytesRead, diff);
-                }
-            }
-            */
         }
         return nInject + bytesRead + bytesRead2;
     }
@@ -397,7 +389,7 @@ namespace OPENSSL_CIPHER_ARBITRARY_IO {
         BIO_set_cipher(pBIOCipherFilter, evp_cipher, pKey, pIV, (int)fEncrypt);
         BIO_push(pBIOCipherFilter, pBIOOutput);
         fBioConnected = true;
-             
+
         return true;
     }
 

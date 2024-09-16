@@ -7,7 +7,6 @@
 #include <iostream>
 
 
-
 // OpenSSL headers
 #include <openssl/bn.h>
 #include <openssl/core_names.h>
@@ -21,11 +20,9 @@
 #include <openssl/provider.h>
 
 
-
 // Windows hearder
 #include <Windows.h>
 #include <winsock.h>
-
 
 typedef unsigned char byte;
 
@@ -38,6 +35,7 @@ namespace BYTE_BUFFERIZED_OPENSSL {
 
 //char const * propertyString = "fips=yes";
 char const* propertyString = NULL;
+OSSL_LIB_CTX* fips_libctx = NULL;
 
 #define ___DH1024 1
 #define ___DH2048 2
@@ -106,152 +104,7 @@ byte* eax_encrypt(byte* data, int data_len, byte* key, int key_size, byte* iv, i
 byte* eax_decrypt(byte* data, int data_len, byte* key, int key_size, byte* iv, int iv_size);
 
 
-
 char const *logMessage = "Result:%s,  Action:%s,  Code:%ul,  FromLower:%d,  Message:%s\n";
-
-
-// ===============================
-//  Lib context
-// ===============================
-
-OSSL_LIB_CTX* fips_libctx = NULL;
-OSSL_PROVIDER* base = NULL;
-OSSL_PROVIDER* fips = NULL;
-
-void initialize_fips_libctx()
-{
-    if (fips_libctx != NULL)
-        return;
-
-    fips_libctx = OSSL_LIB_CTX_new();
-    if (fips_libctx == NULL)
-    {
-        throw std::runtime_error("FAIL. Create new lib context");
-    }
-    if (!OSSL_LIB_CTX_load_config(fips_libctx, "C:\\temp\\openssl.cnf"))
-    {
-        OSSL_LIB_CTX_free(fips_libctx);
-        fips_libctx = NULL;
-        throw std::runtime_error("FAIL. Load config file for FIPS lib context");
-        return;
-    }
-    
-    base = OSSL_PROVIDER_load(fips_libctx, "base");
-    if (base == NULL)
-    {
-        throw std::runtime_error("FAIL. Load base provider");
-        return;
-    }
-
-    if (!OSSL_PROVIDER_set_default_search_path(fips_libctx, "C:\\temp"))
-    {
-        throw std::runtime_error("FAIL. set default search path for provider dll");
-        return;
-    }
-    /*
-    * It's possible to not call set_default_search_path and then give a full path to OSSL_PROVIDER_load.
-    * However, if I call load in such way: OSSL_PROVIDER_load(fips_libctx, "C:\\temp\\fips.dll");
-    * The dll will be loaded without problem, but it can't pass self test.
-    * In that way, the provider's name is literally identified as "C:\temp\fips.dll".
-    * And if in the config file I have a provider called "fips", these two won't be deemed the same.
-    * The fips' provider's module-mac should be present in the config file, than the self test will
-    * check that module-mac. But if the config file says the module-mac belongs to a provider called "fips",
-    * and I loaded a provider called "C:\temp\fips.dll". The one I loaded won't be treated same as the one
-    * owning that module-mac.
-    */
-
-    fips = OSSL_PROVIDER_load(fips_libctx, "fips2");
-    if (fips == NULL)
-    {
-        throw std::runtime_error("FAIL. Load FIPS provider");
-        return;
-    }
-}
-
-void cleanup_fips_libctx()
-{
-    if (base != NULL)
-    {
-        OSSL_PROVIDER_unload(base);
-        base = NULL;
-    }
-    if (fips != NULL)
-    {
-        OSSL_PROVIDER_unload(fips);
-        fips = NULL;
-    }
-
-    if (fips_libctx != NULL)
-        OSSL_LIB_CTX_free(fips_libctx);
-
-    fips_libctx = NULL;
-}
-
-
-// ===========================
-// BIO (Buffered I/O
-// ===========================
-
-void read_from_BIO()
-{
-    BIO* pBIO = BIO_new(BIO_s_mem());
-
-    unsigned char* p = (unsigned char*)malloc(100);
-
-    for (int i = 0; i < 100; i++)
-        *(p+i) = (unsigned char)i;
-
-    BIO_write(pBIO, p, 100);
-
-    memset(p, 0, 100);
-
-    size_t readbytes = 0;
-
-    BIO_read_ex(pBIO, p, 70, &readbytes);
-
-    memset(p, 0, 100);
-
-    BIO_read_ex(pBIO, p, 70, &readbytes);
-
-    std::cout << readbytes << std::endl;
-
-    std::cout << (int)(p[0]) << " " << (int)(p[29]) << "\n";
-
-    free(p);
-
-    BIO_set_flags(pBIO, BIO_FLAGS_MEM_RDONLY);
-    BIO_free(pBIO);
-}
-
-
-void set_BIO_position()
-{
-    BIO* pBIO = BIO_new(BIO_s_mem());
-
-    unsigned char* p = (unsigned char*)malloc(100);
-
-    for (int i = 0; i < 100; i++)
-        *(p + i) = (unsigned char)i;
-
-    BIO_write(pBIO, p, 100);
-
-    memset(p, 0, 100);
-
-    BIO_seek(pBIO, 66);
-
-    size_t readbytes = 0;
-
-    BIO_read_ex(pBIO, p, 100, &readbytes);
-
-    std::cout << readbytes << std::endl;
-
-    std::cout << (int)(p[0]) << " " << (int)(p[29]) << "\n";
-
-    free(p);
-
-    BIO_set_flags(pBIO, BIO_FLAGS_MEM_RDONLY);
-    BIO_free(pBIO);
-}
 
 
 // =========================

@@ -1,11 +1,11 @@
-#include "cipher_openssl2.h"
-//#include "bytebuffer_api_openssl.h"
+#include "arbitrary_io_cipher_OpenSSL.h"
 #include "bytebuffer_api_CryptoPP.h"
 
 #include <sstream>
 #include <iostream>
+#include <iomanip>
 
-namespace CIPHER_OPENSSL2_TEST {
+namespace INTEROP_TEST_ARBITRARY_IO_CIPHER {
 
 	char const* clearText =
 		"Kirkland is a city in King County, Washington, United States. "
@@ -62,10 +62,11 @@ namespace CIPHER_OPENSSL2_TEST {
 	static void test_Cipher_Arbitrary_IO2(ALGO algo, LIB keygen, LIB encrypt_lib, LIB decrypt_lib)
 	{
 		std::stringstream ss;
-		ss << "Symmetric Cipher arbitrary I/O  " << algo_names[algo]
-			<< "    " << lib_names[keygen] << " generate keys and IV  "
-			<< lib_names[encrypt_lib] << " encrypt   "
-			<< lib_names[decrypt_lib] << " decrypt\n";
+		
+		ss << "Symmetric Cipher arbitrary I/O  " << std::setw(9) << algo_names[algo]
+			<< ",  " << lib_names[keygen] << " generate keys and IV,  "
+			<< std::setw(30) << lib_names[encrypt_lib] << " encrypt,  "
+			<< std::setw(30) << lib_names[decrypt_lib] << " decrypt\n";
 
 		char const* ptr_clear_text = clearText2;
 		int clear_text_length = strlen(ptr_clear_text) + 1;
@@ -144,35 +145,35 @@ namespace CIPHER_OPENSSL2_TEST {
 			memcpy(keyDup2, key, keyLen);
 			memcpy(ivDup2, iv, ivLen);
 
-			OPENSSL_CIPHER_ARBITRARY_IO::Cipher* pSymCipher = OPENSSL_CIPHER_ARBITRARY_IO::CipherInitialize(algo, true);
-			OPENSSL_CIPHER_ARBITRARY_IO::CipherSetKeyAndInitialVector(pSymCipher, keyDup2, keyLen, ivDup2, ivLen);
+			ARBITRARY_IO_CIPHER_OPENSSL::Cipher* pSymCipher = ARBITRARY_IO_CIPHER_OPENSSL::CipherInitialize(algo, true);
+			ARBITRARY_IO_CIPHER_OPENSSL::CipherSetKeyAndInitialVector(pSymCipher, keyDup2, keyLen, ivDup2, ivLen);
 
 			int bytesRetrieved, bytesRetrievedTotal = 0;
 
-			OPENSSL_CIPHER_ARBITRARY_IO::CipherSubmitInput(pSymCipher, (byte*)ptr_clear_text, 0, 7);
+			ARBITRARY_IO_CIPHER_OPENSSL::CipherSubmitInput(pSymCipher, (byte*)ptr_clear_text, 0, 7);
 
-			bytesRetrieved = OPENSSL_CIPHER_ARBITRARY_IO::CipherRetrieveOutput(pSymCipher, encryptedBuffer, bytesRetrievedTotal, 5);
+			bytesRetrieved = ARBITRARY_IO_CIPHER_OPENSSL::CipherRetrieveOutput(pSymCipher, encryptedBuffer, bytesRetrievedTotal, 5);
 			bytesRetrievedTotal += bytesRetrieved;
 
-			OPENSSL_CIPHER_ARBITRARY_IO::CipherSubmitInput(pSymCipher, (byte*)ptr_clear_text, 7, 6);
+			ARBITRARY_IO_CIPHER_OPENSSL::CipherSubmitInput(pSymCipher, (byte*)ptr_clear_text, 7, 6);
 
-			bytesRetrieved = OPENSSL_CIPHER_ARBITRARY_IO::CipherRetrieveOutput(pSymCipher, encryptedBuffer, bytesRetrievedTotal, 4);
+			bytesRetrieved = ARBITRARY_IO_CIPHER_OPENSSL::CipherRetrieveOutput(pSymCipher, encryptedBuffer, bytesRetrievedTotal, 4);
 			bytesRetrievedTotal += bytesRetrieved;
 
-			OPENSSL_CIPHER_ARBITRARY_IO::CipherSubmitInput(pSymCipher, (byte*)ptr_clear_text, 13, clear_text_length - 13);
+			ARBITRARY_IO_CIPHER_OPENSSL::CipherSubmitInput(pSymCipher, (byte*)ptr_clear_text, 13, clear_text_length - 13);
 
-			bytesRetrieved = OPENSSL_CIPHER_ARBITRARY_IO::CipherRetrieveOutput(pSymCipher, encryptedBuffer, bytesRetrievedTotal, 1);
+			bytesRetrieved = ARBITRARY_IO_CIPHER_OPENSSL::CipherRetrieveOutput(pSymCipher, encryptedBuffer, bytesRetrievedTotal, 1);
 			bytesRetrievedTotal += bytesRetrieved;
 
-			OPENSSL_CIPHER_ARBITRARY_IO::CipherEndInput(pSymCipher);
+			ARBITRARY_IO_CIPHER_OPENSSL::CipherEndInput(pSymCipher);
 
-			bytesRetrieved = OPENSSL_CIPHER_ARBITRARY_IO::CipherRetrieveOutput(pSymCipher, encryptedBuffer, bytesRetrievedTotal, 1);
+			bytesRetrieved = ARBITRARY_IO_CIPHER_OPENSSL::CipherRetrieveOutput(pSymCipher, encryptedBuffer, bytesRetrievedTotal, 1);
 			bytesRetrievedTotal += bytesRetrieved;
 
-			bytesRetrieved = OPENSSL_CIPHER_ARBITRARY_IO::CipherRetrieveOutput(pSymCipher, encryptedBuffer, bytesRetrievedTotal, encryptedBufferSize - bytesRetrievedTotal);
+			bytesRetrieved = ARBITRARY_IO_CIPHER_OPENSSL::CipherRetrieveOutput(pSymCipher, encryptedBuffer, bytesRetrievedTotal, encryptedBufferSize - bytesRetrievedTotal);
 			bytesRetrievedTotal += bytesRetrieved;
 
-			OPENSSL_CIPHER_ARBITRARY_IO::CipherRelease(pSymCipher);
+			ARBITRARY_IO_CIPHER_OPENSSL::CipherRelease(pSymCipher);
 		}
 
 		if (decrypt_lib == LIB::CRYPTOPP)
@@ -219,32 +220,32 @@ namespace CIPHER_OPENSSL2_TEST {
 			memcpy(keyDup4, key, keyLen);
 			memcpy(ivDup4, iv, ivLen);
 
-			OPENSSL_CIPHER_ARBITRARY_IO::Cipher* pSymCipher = OPENSSL_CIPHER_ARBITRARY_IO::CipherInitialize(algo, false);
-			OPENSSL_CIPHER_ARBITRARY_IO::CipherSetKeyAndInitialVector(pSymCipher, keyDup4, keyLen, ivDup4, ivLen);
+			ARBITRARY_IO_CIPHER_OPENSSL::Cipher* pSymCipher = ARBITRARY_IO_CIPHER_OPENSSL::CipherInitialize(algo, false);
+			ARBITRARY_IO_CIPHER_OPENSSL::CipherSetKeyAndInitialVector(pSymCipher, keyDup4, keyLen, ivDup4, ivLen);
 
 			int bytesRetrieved, bytesRetrievedTotal = 0;
 
-			OPENSSL_CIPHER_ARBITRARY_IO::CipherSubmitInput(pSymCipher, encryptedBuffer, 0, 7);
+			ARBITRARY_IO_CIPHER_OPENSSL::CipherSubmitInput(pSymCipher, encryptedBuffer, 0, 7);
 
-			bytesRetrieved = OPENSSL_CIPHER_ARBITRARY_IO::CipherRetrieveOutput(pSymCipher, decryptedBuffer, bytesRetrievedTotal, 5);
+			bytesRetrieved = ARBITRARY_IO_CIPHER_OPENSSL::CipherRetrieveOutput(pSymCipher, decryptedBuffer, bytesRetrievedTotal, 5);
 			bytesRetrievedTotal += bytesRetrieved;
 
-			OPENSSL_CIPHER_ARBITRARY_IO::CipherSubmitInput(pSymCipher, encryptedBuffer, 7, 10);
+			ARBITRARY_IO_CIPHER_OPENSSL::CipherSubmitInput(pSymCipher, encryptedBuffer, 7, 10);
 
-			bytesRetrieved = OPENSSL_CIPHER_ARBITRARY_IO::CipherRetrieveOutput(pSymCipher, decryptedBuffer, bytesRetrievedTotal, 6);
+			bytesRetrieved = ARBITRARY_IO_CIPHER_OPENSSL::CipherRetrieveOutput(pSymCipher, decryptedBuffer, bytesRetrievedTotal, 6);
 			bytesRetrievedTotal += bytesRetrieved;
 
-			OPENSSL_CIPHER_ARBITRARY_IO::CipherSubmitInput(pSymCipher, encryptedBuffer, 17, encryptedBufferSize - 17);
+			ARBITRARY_IO_CIPHER_OPENSSL::CipherSubmitInput(pSymCipher, encryptedBuffer, 17, encryptedBufferSize - 17);
 
-			OPENSSL_CIPHER_ARBITRARY_IO::CipherEndInput(pSymCipher);
+			ARBITRARY_IO_CIPHER_OPENSSL::CipherEndInput(pSymCipher);
 
-			bytesRetrieved = OPENSSL_CIPHER_ARBITRARY_IO::CipherRetrieveOutput(pSymCipher, decryptedBuffer, bytesRetrievedTotal, 1);
+			bytesRetrieved = ARBITRARY_IO_CIPHER_OPENSSL::CipherRetrieveOutput(pSymCipher, decryptedBuffer, bytesRetrievedTotal, 1);
 			bytesRetrievedTotal += bytesRetrieved;
 
-			bytesRetrieved = OPENSSL_CIPHER_ARBITRARY_IO::CipherRetrieveOutput(pSymCipher, decryptedBuffer, bytesRetrievedTotal, decryptedBufferSize - bytesRetrievedTotal);
+			bytesRetrieved = ARBITRARY_IO_CIPHER_OPENSSL::CipherRetrieveOutput(pSymCipher, decryptedBuffer, bytesRetrievedTotal, decryptedBufferSize - bytesRetrievedTotal);
 			bytesRetrievedTotal += bytesRetrieved;
 
-			OPENSSL_CIPHER_ARBITRARY_IO::CipherRelease(pSymCipher);
+			ARBITRARY_IO_CIPHER_OPENSSL::CipherRelease(pSymCipher);
 		}
 
 		if (strcmp(ptr_clear_text, (char*)decryptedBuffer) == 0)
@@ -268,9 +269,9 @@ namespace CIPHER_OPENSSL2_TEST {
 
 	void test()
 	{
-		test_Cipher_Arbitrary_IO2(ALGO::AES_EAX, LIB::CRYPTOPP, LIB::OPENSSL_ARBITRARY_IO, LIB::CRYPTOPP);
+		//test_Cipher_Arbitrary_IO2(ALGO::AES_EAX, LIB::CRYPTOPP, LIB::OPENSSL_ARBITRARY_IO, LIB::CRYPTOPP);
 
-		/*
+
 		test_Cipher_Arbitrary_IO2(ALGO::AES_CBC, LIB::CRYPTOPP, LIB::CRYPTOPP, LIB::OPENSSL_ARBITRARY_IO);
 		
 		test_Cipher_Arbitrary_IO2(ALGO::AES_EAX, LIB::CRYPTOPP, LIB::CRYPTOPP, LIB::OPENSSL_ARBITRARY_IO);
@@ -280,7 +281,6 @@ namespace CIPHER_OPENSSL2_TEST {
 		test_Cipher_Arbitrary_IO2(ALGO::DES3_CBC, LIB::CRYPTOPP, LIB::CRYPTOPP, LIB::OPENSSL_ARBITRARY_IO);
 		
 
-		
 		test_Cipher_Arbitrary_IO2(ALGO::AES_CBC, LIB::CRYPTOPP, LIB::OPENSSL_ARBITRARY_IO, LIB::CRYPTOPP);
 		
 		test_Cipher_Arbitrary_IO2(ALGO::AES_EAX, LIB::CRYPTOPP, LIB::OPENSSL_ARBITRARY_IO, LIB::CRYPTOPP);
@@ -288,6 +288,6 @@ namespace CIPHER_OPENSSL2_TEST {
 		test_Cipher_Arbitrary_IO2(ALGO::AES_GCM, LIB::CRYPTOPP, LIB::OPENSSL_ARBITRARY_IO, LIB::CRYPTOPP);
 		
 		test_Cipher_Arbitrary_IO2(ALGO::DES3_CBC, LIB::CRYPTOPP, LIB::OPENSSL_ARBITRARY_IO, LIB::CRYPTOPP);
-		*/
+
 	}
 }

@@ -2,18 +2,9 @@
 
 #include <Windows.h>
 
-#include <openssl/bn.h>
-#include <openssl/core_names.h>
-#include <openssl/params.h>
-#include <openssl/evp.h>
-#include <openssl/decoder.h>
-#include <openssl/encoder.h>
-#include <openssl/param_build.h>
-#include <openssl/rand.h>
-#include <openssl/err.h>
-#include <openssl/provider.h>
+#include <openssl/bio.h>
 
-namespace OPENSSL_CIPHER_ARBITRARY_IO {
+namespace ARBITRARY_IO_CIPHER_OPENSSL {
 
     class Cipher
     {
@@ -117,7 +108,7 @@ namespace OPENSSL_CIPHER_ARBITRARY_IO {
 
         BIO* pBIOCiphertextBackup;
 
-        bool isInputEnd;
+        //bool isInputEnd;
         byte potentialTag[16];
         int nBufferedPotentialTagLength;
 

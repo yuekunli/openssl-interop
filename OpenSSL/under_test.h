@@ -1,5 +1,10 @@
 #pragma once
 
+namespace AUX_TEST {
+	void test1();
+	void test2();
+}
+
 namespace CRYPTOPP_DEMO {
 	void demo_ECIES_encrypt1();
 	void demo_ECIES_encrypt2();
@@ -24,11 +29,6 @@ namespace INTEROP_TEST_SYMMETRICCRYPT {
 	void test_Symmetric_Cipher();
 	void test12();
 	void test13();
-}
-
-namespace AUX_TEST {
-	void test1();
-	void test2();
 }
 
 namespace INTEROP_TEST_CMAC {
@@ -58,14 +58,16 @@ namespace OPENSSL_ASN1_TEST {
 	void openssl_asn1_test2();
 }
 
-namespace OPENSSL_TEST_LIBCTX_PROVIDER {
-	void test();
+namespace OPENSSL_LIBCTX_PROVIDER_TEST {
+	void initialize_fips_libctx();
+	void cleanup_fips_libctx();
 }
 
-namespace OPENSSL_TEST_BIO {
-	void test1();
+namespace OPENSSL_BIO_TEST {
+	void read_from_BIO();
+	void set_BIO_position();
 }
 
-namespace CIPHER_OPENSSL2_TEST {
+namespace INTEROP_TEST_ARBITRARY_IO_CIPHER {
 	void test();
 }
