@@ -267,27 +267,288 @@ namespace INTEROP_TEST_ARBITRARY_IO_CIPHER {
 			free(decryptedBuffer);
 	}
 
+
+
+	static void test_reset(ALGO algo, LIB keygen, LIB encrypt_lib, LIB decrypt_lib)
+	{
+		std::stringstream ss;
+
+		ss << "Symmetric Cipher arbitrary I/O with reset " << std::setw(9) << algo_names[algo]
+			<< ",  " << lib_names[keygen] << " generate keys and IV,  "
+			<< std::setw(30) << lib_names[encrypt_lib] << " encrypt,  "
+			<< std::setw(30) << lib_names[decrypt_lib] << " decrypt\n";
+
+		char const* ptr_clear_text = clearText2;
+		int clear_text_length = strlen(ptr_clear_text) + 1;
+
+		int encryptedBufferSize = get_encryption_output_size(algo, clear_text_length);
+		byte* encryptedBuffer = (byte*)malloc(encryptedBufferSize);
+
+		int decryptedBufferSize = 40;
+		byte* decryptedBuffer = (byte*)malloc(decryptedBufferSize);
+
+		int keyLen = key_length[algo];
+		byte* key = (byte*)malloc(keyLen);
+
+		//byte key[16] = {
+		//	0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08,
+		//	0xa1, 0xa2, 0xa3, 0xa4, 0xa5, 0xa6, 0xa7, 0xa8
+		//};
+
+
+		//const int regular_iv_length[5] = { 0, 16, 256, 12, 8 };
+		int ivLen = iv_length[algo];
+		//int ivLen = 16;
+		byte* iv = (byte*)malloc(ivLen);
+		//byte iv[16] = {
+		//	0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28,
+		//	0x29, 0x2a, 0x2b, 0x2c, 0x31, 0x32, 0x33, 0x34//,
+			//0x51, 0x52, 0x53, 0x54
+		//};
+
+
+		BYTE_BUFFERIZED_CRYPTOPP::RngFillByteArrayRegion(key, 0, keyLen);
+		BYTE_BUFFERIZED_CRYPTOPP::RngFillByteArrayRegion(iv, 0, ivLen);
+
+		if (encrypt_lib == LIB::CRYPTOPP)
+		{
+			byte* keyDup = (byte*)malloc(keyLen);
+			byte* ivDup = (byte*)malloc(ivLen);
+			memcpy(keyDup, key, keyLen);
+			memcpy(ivDup, iv, ivLen);
+
+			BYTE_BUFFERIZED_CRYPTOPP::Cipher* pSymCipher = BYTE_BUFFERIZED_CRYPTOPP::CipherInitialize(algo, true);
+			BYTE_BUFFERIZED_CRYPTOPP::CipherSetKeyAndInitialVector(pSymCipher, keyDup, keyLen, ivDup, ivLen);
+
+			int bytesRetrieved, bytesRetrievedTotal = 0;
+
+			BYTE_BUFFERIZED_CRYPTOPP::CipherSubmitInput(pSymCipher, (byte*)ptr_clear_text, 0, 7);
+
+
+			bytesRetrieved = BYTE_BUFFERIZED_CRYPTOPP::CipherRetrieveOutput(pSymCipher, encryptedBuffer, bytesRetrievedTotal, 5);
+			bytesRetrievedTotal += bytesRetrieved;
+
+			BYTE_BUFFERIZED_CRYPTOPP::CipherSubmitInput(pSymCipher, (byte*)ptr_clear_text, 7, 6);
+
+			bytesRetrieved = BYTE_BUFFERIZED_CRYPTOPP::CipherRetrieveOutput(pSymCipher, encryptedBuffer, bytesRetrievedTotal, 4);
+			bytesRetrievedTotal += bytesRetrieved;
+
+			BYTE_BUFFERIZED_CRYPTOPP::CipherSubmitInput(pSymCipher, (byte*)ptr_clear_text, 13, clear_text_length - 13);
+
+			bytesRetrieved = BYTE_BUFFERIZED_CRYPTOPP::CipherRetrieveOutput(pSymCipher, encryptedBuffer, bytesRetrievedTotal, 1);
+			bytesRetrievedTotal += bytesRetrieved;
+
+			BYTE_BUFFERIZED_CRYPTOPP::CipherEndInput(pSymCipher);
+
+			bytesRetrieved = BYTE_BUFFERIZED_CRYPTOPP::CipherRetrieveOutput(pSymCipher, encryptedBuffer, bytesRetrievedTotal, 1);
+			bytesRetrievedTotal += bytesRetrieved;
+
+			bytesRetrieved = BYTE_BUFFERIZED_CRYPTOPP::CipherRetrieveOutput(pSymCipher, encryptedBuffer, bytesRetrievedTotal, encryptedBufferSize - bytesRetrievedTotal);
+			bytesRetrievedTotal += bytesRetrieved;
+
+			BYTE_BUFFERIZED_CRYPTOPP::CipherRelease(pSymCipher);
+		}
+		else if (encrypt_lib == LIB::OPENSSL_ARBITRARY_IO)
+		{
+			byte* keyDup2 = (byte*)malloc(keyLen);
+			byte* ivDup2 = (byte*)malloc(ivLen);
+			memcpy(keyDup2, key, keyLen);
+			memcpy(ivDup2, iv, ivLen);
+
+			ARBITRARY_IO_CIPHER_OPENSSL::Cipher* pSymCipher = ARBITRARY_IO_CIPHER_OPENSSL::CipherInitialize(algo, true);
+			ARBITRARY_IO_CIPHER_OPENSSL::CipherSetKeyAndInitialVector(pSymCipher, keyDup2, keyLen, ivDup2, ivLen);
+
+			int bytesRetrieved, bytesRetrievedTotal = 0;
+
+			ARBITRARY_IO_CIPHER_OPENSSL::CipherSubmitInput(pSymCipher, (byte*)ptr_clear_text, 0, 7);
+
+			bytesRetrieved = ARBITRARY_IO_CIPHER_OPENSSL::CipherRetrieveOutput(pSymCipher, encryptedBuffer, bytesRetrievedTotal, 5);
+			bytesRetrievedTotal += bytesRetrieved;
+
+			ARBITRARY_IO_CIPHER_OPENSSL::CipherSubmitInput(pSymCipher, (byte*)ptr_clear_text, 7, 6);
+
+			bytesRetrieved = ARBITRARY_IO_CIPHER_OPENSSL::CipherRetrieveOutput(pSymCipher, encryptedBuffer, bytesRetrievedTotal, 4);
+			bytesRetrievedTotal += bytesRetrieved;
+
+
+			{
+				ARBITRARY_IO_CIPHER_OPENSSL::CipherReset(pSymCipher);
+
+				bytesRetrieved = bytesRetrievedTotal = 0;
+
+				ARBITRARY_IO_CIPHER_OPENSSL::CipherSubmitInput(pSymCipher, (byte*)ptr_clear_text, 0, 7);
+
+				bytesRetrieved = ARBITRARY_IO_CIPHER_OPENSSL::CipherRetrieveOutput(pSymCipher, encryptedBuffer, bytesRetrievedTotal, 5);
+				bytesRetrievedTotal += bytesRetrieved;
+
+				ARBITRARY_IO_CIPHER_OPENSSL::CipherSubmitInput(pSymCipher, (byte*)ptr_clear_text, 7, 6);
+
+				bytesRetrieved = ARBITRARY_IO_CIPHER_OPENSSL::CipherRetrieveOutput(pSymCipher, encryptedBuffer, bytesRetrievedTotal, 4);
+				bytesRetrievedTotal += bytesRetrieved;
+
+			}
+
+
+			ARBITRARY_IO_CIPHER_OPENSSL::CipherSubmitInput(pSymCipher, (byte*)ptr_clear_text, 13, clear_text_length - 13);
+
+			bytesRetrieved = ARBITRARY_IO_CIPHER_OPENSSL::CipherRetrieveOutput(pSymCipher, encryptedBuffer, bytesRetrievedTotal, 1);
+			bytesRetrievedTotal += bytesRetrieved;
+
+			ARBITRARY_IO_CIPHER_OPENSSL::CipherEndInput(pSymCipher);
+
+			bytesRetrieved = ARBITRARY_IO_CIPHER_OPENSSL::CipherRetrieveOutput(pSymCipher, encryptedBuffer, bytesRetrievedTotal, 1);
+			bytesRetrievedTotal += bytesRetrieved;
+
+			bytesRetrieved = ARBITRARY_IO_CIPHER_OPENSSL::CipherRetrieveOutput(pSymCipher, encryptedBuffer, bytesRetrievedTotal, encryptedBufferSize - bytesRetrievedTotal);
+			bytesRetrievedTotal += bytesRetrieved;
+
+			ARBITRARY_IO_CIPHER_OPENSSL::CipherRelease(pSymCipher);
+		}
+
+		if (decrypt_lib == LIB::CRYPTOPP)
+		{
+			byte* keyDup3 = (byte*)malloc(keyLen);
+			byte* ivDup3 = (byte*)malloc(ivLen);
+			memcpy(keyDup3, key, keyLen);
+			memcpy(ivDup3, iv, ivLen);
+
+			BYTE_BUFFERIZED_CRYPTOPP::Cipher* pSymCipher = BYTE_BUFFERIZED_CRYPTOPP::CipherInitialize(algo, false);
+			BYTE_BUFFERIZED_CRYPTOPP::CipherSetKeyAndInitialVector(pSymCipher, keyDup3, keyLen, ivDup3, ivLen);
+
+			int bytesRetrieved, bytesRetrievedTotal = 0;
+
+			BYTE_BUFFERIZED_CRYPTOPP::CipherSubmitInput(pSymCipher, encryptedBuffer, 0, 7);
+
+			bytesRetrieved = BYTE_BUFFERIZED_CRYPTOPP::CipherRetrieveOutput(pSymCipher, decryptedBuffer, bytesRetrievedTotal, 5);
+			bytesRetrievedTotal += bytesRetrieved;
+
+			BYTE_BUFFERIZED_CRYPTOPP::CipherSubmitInput(pSymCipher, encryptedBuffer, 7, 10);
+
+			bytesRetrieved = BYTE_BUFFERIZED_CRYPTOPP::CipherRetrieveOutput(pSymCipher, decryptedBuffer, bytesRetrievedTotal, 6);
+			bytesRetrievedTotal += bytesRetrieved;
+
+			BYTE_BUFFERIZED_CRYPTOPP::CipherSubmitInput(pSymCipher, encryptedBuffer, 17, encryptedBufferSize - 17);
+
+			bytesRetrieved = BYTE_BUFFERIZED_CRYPTOPP::CipherRetrieveOutput(pSymCipher, decryptedBuffer, bytesRetrievedTotal, decryptedBufferSize - bytesRetrievedTotal);
+			bytesRetrievedTotal += bytesRetrieved;
+
+			BYTE_BUFFERIZED_CRYPTOPP::CipherEndInput(pSymCipher);
+
+			bytesRetrieved = BYTE_BUFFERIZED_CRYPTOPP::CipherRetrieveOutput(pSymCipher, decryptedBuffer, bytesRetrievedTotal, 1);
+			bytesRetrievedTotal += bytesRetrieved;
+
+			bytesRetrieved = BYTE_BUFFERIZED_CRYPTOPP::CipherRetrieveOutput(pSymCipher, decryptedBuffer, bytesRetrievedTotal, decryptedBufferSize - bytesRetrievedTotal);
+			bytesRetrievedTotal += bytesRetrieved;
+
+			BYTE_BUFFERIZED_CRYPTOPP::CipherRelease(pSymCipher);
+		}
+		else if (decrypt_lib == LIB::OPENSSL_ARBITRARY_IO)
+		{
+			byte* keyDup4 = (byte*)malloc(keyLen);
+			byte* ivDup4 = (byte*)malloc(ivLen);
+			memcpy(keyDup4, key, keyLen);
+			memcpy(ivDup4, iv, ivLen);
+
+			ARBITRARY_IO_CIPHER_OPENSSL::Cipher* pSymCipher = ARBITRARY_IO_CIPHER_OPENSSL::CipherInitialize(algo, false);
+			ARBITRARY_IO_CIPHER_OPENSSL::CipherSetKeyAndInitialVector(pSymCipher, keyDup4, keyLen, ivDup4, ivLen);
+
+			int bytesRetrieved, bytesRetrievedTotal = 0;
+
+			ARBITRARY_IO_CIPHER_OPENSSL::CipherSubmitInput(pSymCipher, encryptedBuffer, 0, 7);
+
+			bytesRetrieved = ARBITRARY_IO_CIPHER_OPENSSL::CipherRetrieveOutput(pSymCipher, decryptedBuffer, bytesRetrievedTotal, 5);
+			bytesRetrievedTotal += bytesRetrieved;
+
+			ARBITRARY_IO_CIPHER_OPENSSL::CipherSubmitInput(pSymCipher, encryptedBuffer, 7, 10);
+
+			bytesRetrieved = ARBITRARY_IO_CIPHER_OPENSSL::CipherRetrieveOutput(pSymCipher, decryptedBuffer, bytesRetrievedTotal, 6);
+			bytesRetrievedTotal += bytesRetrieved;
+
+			{
+				ARBITRARY_IO_CIPHER_OPENSSL::CipherReset(pSymCipher);
+
+				bytesRetrieved = bytesRetrievedTotal = 0;
+
+				ARBITRARY_IO_CIPHER_OPENSSL::CipherSubmitInput(pSymCipher, encryptedBuffer, 0, 7);
+
+				bytesRetrieved = ARBITRARY_IO_CIPHER_OPENSSL::CipherRetrieveOutput(pSymCipher, decryptedBuffer, bytesRetrievedTotal, 5);
+				bytesRetrievedTotal += bytesRetrieved;
+
+				ARBITRARY_IO_CIPHER_OPENSSL::CipherSubmitInput(pSymCipher, encryptedBuffer, 7, 10);
+
+				bytesRetrieved = ARBITRARY_IO_CIPHER_OPENSSL::CipherRetrieveOutput(pSymCipher, decryptedBuffer, bytesRetrievedTotal, 6);
+				bytesRetrievedTotal += bytesRetrieved;
+			}
+
+			ARBITRARY_IO_CIPHER_OPENSSL::CipherSubmitInput(pSymCipher, encryptedBuffer, 17, encryptedBufferSize - 17);
+
+			ARBITRARY_IO_CIPHER_OPENSSL::CipherEndInput(pSymCipher);
+
+			bytesRetrieved = ARBITRARY_IO_CIPHER_OPENSSL::CipherRetrieveOutput(pSymCipher, decryptedBuffer, bytesRetrievedTotal, 1);
+			bytesRetrievedTotal += bytesRetrieved;
+
+			bytesRetrieved = ARBITRARY_IO_CIPHER_OPENSSL::CipherRetrieveOutput(pSymCipher, decryptedBuffer, bytesRetrievedTotal, decryptedBufferSize - bytesRetrievedTotal);
+			bytesRetrievedTotal += bytesRetrieved;
+
+			ARBITRARY_IO_CIPHER_OPENSSL::CipherRelease(pSymCipher);
+		}
+
+		if (strcmp(ptr_clear_text, (char*)decryptedBuffer) == 0)
+		{
+			std::cout << "SUCCESS   " << ss.str();
+		}
+		else
+		{
+			std::cout << "FAIL   " << ss.str();
+		}
+
+		if (key)
+			free(key);
+		if (iv)
+			free(iv);
+		if (encryptedBuffer)
+			free(encryptedBuffer);
+		if (decryptedBuffer)
+			free(decryptedBuffer);
+	}
+
+
 	void test()
 	{
-		//test_Cipher_Arbitrary_IO2(ALGO::AES_EAX, LIB::CRYPTOPP, LIB::OPENSSL_ARBITRARY_IO, LIB::CRYPTOPP);
-
-
+		/*
 		test_Cipher_Arbitrary_IO2(ALGO::AES_CBC, LIB::CRYPTOPP, LIB::CRYPTOPP, LIB::OPENSSL_ARBITRARY_IO);
-		
+
 		test_Cipher_Arbitrary_IO2(ALGO::AES_EAX, LIB::CRYPTOPP, LIB::CRYPTOPP, LIB::OPENSSL_ARBITRARY_IO);
-		
+
 		test_Cipher_Arbitrary_IO2(ALGO::AES_GCM, LIB::CRYPTOPP, LIB::CRYPTOPP, LIB::OPENSSL_ARBITRARY_IO);
-		
+
 		test_Cipher_Arbitrary_IO2(ALGO::DES3_CBC, LIB::CRYPTOPP, LIB::CRYPTOPP, LIB::OPENSSL_ARBITRARY_IO);
-		
+
 
 		test_Cipher_Arbitrary_IO2(ALGO::AES_CBC, LIB::CRYPTOPP, LIB::OPENSSL_ARBITRARY_IO, LIB::CRYPTOPP);
-		
-		test_Cipher_Arbitrary_IO2(ALGO::AES_EAX, LIB::CRYPTOPP, LIB::OPENSSL_ARBITRARY_IO, LIB::CRYPTOPP);
-		
-		test_Cipher_Arbitrary_IO2(ALGO::AES_GCM, LIB::CRYPTOPP, LIB::OPENSSL_ARBITRARY_IO, LIB::CRYPTOPP);
-		
-		test_Cipher_Arbitrary_IO2(ALGO::DES3_CBC, LIB::CRYPTOPP, LIB::OPENSSL_ARBITRARY_IO, LIB::CRYPTOPP);
 
+		test_Cipher_Arbitrary_IO2(ALGO::AES_EAX, LIB::CRYPTOPP, LIB::OPENSSL_ARBITRARY_IO, LIB::CRYPTOPP);
+
+		test_Cipher_Arbitrary_IO2(ALGO::AES_GCM, LIB::CRYPTOPP, LIB::OPENSSL_ARBITRARY_IO, LIB::CRYPTOPP);
+
+		test_Cipher_Arbitrary_IO2(ALGO::DES3_CBC, LIB::CRYPTOPP, LIB::OPENSSL_ARBITRARY_IO, LIB::CRYPTOPP);
+		*/
+
+		test_reset(ALGO::AES_CBC, LIB::CRYPTOPP, LIB::CRYPTOPP, LIB::OPENSSL_ARBITRARY_IO);
+
+		test_reset(ALGO::AES_EAX, LIB::CRYPTOPP, LIB::CRYPTOPP, LIB::OPENSSL_ARBITRARY_IO);
+
+		test_reset(ALGO::AES_GCM, LIB::CRYPTOPP, LIB::CRYPTOPP, LIB::OPENSSL_ARBITRARY_IO);
+
+		test_reset(ALGO::DES3_CBC, LIB::CRYPTOPP, LIB::CRYPTOPP, LIB::OPENSSL_ARBITRARY_IO);
+
+
+		test_reset(ALGO::AES_CBC, LIB::CRYPTOPP, LIB::OPENSSL_ARBITRARY_IO, LIB::CRYPTOPP);
+
+		test_reset(ALGO::AES_EAX, LIB::CRYPTOPP, LIB::OPENSSL_ARBITRARY_IO, LIB::CRYPTOPP);
+
+		test_reset(ALGO::AES_GCM, LIB::CRYPTOPP, LIB::OPENSSL_ARBITRARY_IO, LIB::CRYPTOPP);
+
+		test_reset(ALGO::DES3_CBC, LIB::CRYPTOPP, LIB::OPENSSL_ARBITRARY_IO, LIB::CRYPTOPP);
 	}
 }

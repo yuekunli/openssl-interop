@@ -9,9 +9,9 @@ namespace ARBITRARY_IO_CIPHER_OPENSSL {
     class Cipher
     {
     protected:
-        int nAlgorithm;
-        bool fEncrypt;
 
+        bool fEncrypt;
+        char aFullTransformationName[32];
         byte* pKey;
         int nKeyLength;
 
@@ -22,99 +22,103 @@ namespace ARBITRARY_IO_CIPHER_OPENSSL {
         int nBytesToBeInjected;
         int nBytesAlreadyInjected;
         byte* pBytesToBeInjected;
+
+        BIO* pBioOutput;
+        BIO* pBioCipherFilter;
+        bool isBioConnected;
+
+        Cipher() = delete;
+
+        Cipher(bool _fEncrypt);
+
+        void shallowCopyKeyAndIV(byte* pKey, int nKeyLength, byte* pIV, int nIVLength);
+
+        bool setupBioChain(byte* pKey, int nKeyLength, byte* pIV, int nIVLength);
+
+
+
+        bool dealWithSkippingWhenRetrieveOutput(byte* pOutput, int nOffset, int nLength);
+
+        int dealWithInjectionWhenRetrieveOutput(byte* pOutput, int nOffset, int nLength);
+
+        virtual int dealWithCopyWhenRetrieveOutput(byte* pOutput, int nOffset, int nLength, int nInject);
+
     public:
+        ~Cipher();
+
+        int skipBytes(int _nBytesToBeSkipped);
+        
+        int injectBytes(byte* pInjectBytes, int nOffset, int _nBytesToBeInjected);
+
         virtual bool setKeyAndIV(byte* pKey, int nKeyLength, byte* pIV, int nIVLength) = 0;
-
-        //virtual bool reset() = 0;
-
         virtual bool submitInput(byte* pInput, int nOffset, int nLength) = 0;
 
         virtual bool endInput() = 0;
 
-        virtual int retrieveOutput(byte* pOutput, int nOffset, int nLength) = 0;
-
-        int skipBytes(int _nBytesToBeSkipped)
-        {
-            nBytesToBeSkipped = _nBytesToBeSkipped;
-        }
-
-        int injectBytes(byte* pInjectBytes, int nOffset, int _nBytesToBeInjected)
-        {
-            pBytesToBeInjected = (byte*)OPENSSL_realloc(pBytesToBeInjected, nBytesToBeInjected + _nBytesToBeInjected);
-            memcpy(pBytesToBeInjected + nBytesToBeInjected, pInjectBytes, _nBytesToBeInjected);
-            nBytesToBeInjected += _nBytesToBeInjected;
-        }
+        int retrieveOutput(byte* pOutput, int nOffset, int nLength);
+        virtual bool reset();
     };
 
     class CBC : Cipher
     {
     protected:
-        BIO* pBIOOutput;
-        BIO* pBIOCipherFilter;
-        bool fBioConnected;
-        int nBlockSize;
+
         char const* cipherName[2] = { "AES-128-CBC", "DES-EDE3-CBC" };
         char const* pChosenCipherName;
-    public:
+    
         CBC(bool);
-        ~CBC();
+        ~CBC() = default;
         bool setKeyAndIV(byte* pKey, int nKeyLength, byte* pIV, int nIvLength);
         bool submitInput(byte* pInput, int nOffset, int nLength);
         bool endInput();
-        int retrieveOutput(byte* pOutput, int nOffset, int nLength);
     };
 
     class AESCBC : CBC
     {
     public:
         AESCBC(bool);
-        bool setKeyAndIV(byte* pKey, int nKeyLength, byte* pIV, int nIvLength);
+        ~AESCBC() = default;
+        
+        //bool setKeyAndIV(byte* pKey, int nKeyLength, byte* pIV, int nIvLength);
     };
 
     class DES3CBC : CBC
     {
     public:
         DES3CBC(bool);
-        bool setKeyAndIV(byte* pKey, int nKeyLength, byte* pIV, int nIvLength);
+        ~DES3CBC() = default;
+        
+        //bool setKeyAndIV(byte* pKey, int nKeyLength, byte* pIV, int nIvLength);
     };
 
 	class AESGCM : Cipher
 	{
-		BIO* pBIOOutput;
-		BIO* pBIOCipher;
-		bool fBioConnected;
-
+    private:
 		byte potentialTag[16];
 		int nBufferedPotentialTagLength;
+        int dealWithCopyWhenRetrieveOutput(byte* pOutput, int nOffset, int nLength, int nInject) override;
+
 	public:
 		AESGCM(bool);
-        ~AESGCM();
+        ~AESGCM() = default;
 		bool setKeyAndIV(byte* pKey, int nKeyLength, byte* pIV, int nIVLength);
 		bool submitInput(byte* pInput, int nOffset, int nLength);
 		bool endInput();
-		int retrieveOutput(byte* pOutput, int nOffset, int nLength);
+        bool reset() override;
 	};
 
     class AESEAX : Cipher
     {
-        BIO* pBIOOutput;
-        BIO* pBIOCipherFilter;
-        bool fBioConnected;
-
+    private:
         byte* big_N;
         byte* big_H;
-    
         int data_size;
-
-        BIO* pBIOCiphertextBackup;
-
-        //bool isInputEnd;
+        BIO* pBioCiphertextBackup;
         byte potentialTag[16];
         int nBufferedPotentialTagLength;
-
         bool isTagProcessed;
 
-        void processTag();
+        int dealWithCopyWhenRetrieveOutput(byte* pOutput, int nOffset, int nLength, int nInject) override;
 
     public:
         AESEAX(bool);
@@ -122,7 +126,7 @@ namespace ARBITRARY_IO_CIPHER_OPENSSL {
         bool setKeyAndIV(byte* pKey, int nKeyLength, byte* pIV, int nIVLength);
         bool submitInput(byte* pInput, int nOffset, int nLength);
         bool endInput();
-        int retrieveOutput(byte* pOutput, int nOffset, int nLength);
+        bool reset() override;
     };
 
 
@@ -137,4 +141,6 @@ namespace ARBITRARY_IO_CIPHER_OPENSSL {
     Cipher* CipherInitialize(int nAlgorithm, bool isEncrypt);
 
     bool CipherRelease(Cipher* p);
+
+    bool CipherReset(Cipher* p);
 }

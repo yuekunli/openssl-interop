@@ -23,23 +23,6 @@
 
 typedef unsigned char byte;
 
-#define ___ENCRYPTION_ALGORITHM_AES256_CBC 1
-#define ___ENCRYPTION_ALGORITHM_AES256_EAX 2
-#define ___ENCRYPTION_ALGORITHM_AES256_GCM 3
-#define ___ENCRYPTION_ALGORITHM_TRIPLE_DES_CBC 4
-
-#define ___BLOCK_SIZE_AES256_CBC  16
-#define ___BLOCK_SIZE_AES256_EAX  16
-#define ___BLOCK_SIZE_AES256_GCM  16
-#define ___BLOCK_SIZE_TRIPLE_DES_CBC 8
-
-#define ___IV_LENGTH_AES256_CBC 16
-#define ___IV_LENGTH_AES256_EAX 256
-#define ___IV_LENGTH_AES256_GCM 128
-#define ___IV_LENGTH_TRIPLE_DES_CBC 8
-
-#define ___KEY_TYPE_NONE 75
-
 namespace ARBITRARY_IO_CIPHER_OPENSSL {
 
     OSSL_LIB_CTX* fips_libctx = NULL;
@@ -104,7 +87,6 @@ namespace ARBITRARY_IO_CIPHER_OPENSSL {
         }
     }
 
-
     static byte* generateCMAC_3(byte* plaintext, int plaintextLength, byte* key, int key_size, int* tag_size)
     {
         EVP_MAC* cmac = NULL;
@@ -160,20 +142,176 @@ namespace ARBITRARY_IO_CIPHER_OPENSSL {
         return tag;
     }
 
+    //==========================================================================================//
 
-
-    AESEAX::AESEAX(bool _fEncrypt)
+    Cipher::Cipher(bool _fEncrypt) :
+        fEncrypt(_fEncrypt),
+        pKey(NULL),
+        nKeyLength(0),
+        pIV(NULL),
+        nIVLength(0),
+        nBytesToBeSkipped(0),
+        nBytesToBeInjected(0),
+        nBytesAlreadyInjected(0),
+        pBytesToBeInjected(NULL),
+        pBioOutput(BIO_new(BIO_s_mem())),
+        pBioCipherFilter(NULL),
+        isBioConnected(false)
     {
-        fEncrypt = _fEncrypt;
-        pBIOOutput = BIO_new(BIO_s_mem());
-        pBIOCiphertextBackup = BIO_new(BIO_s_mem());
-        pBIOCipherFilter = NULL;
-        fBioConnected = false;
-        big_N = big_H = NULL;
-        //isInputEnd = false;
-        data_size = 0;
-        nBufferedPotentialTagLength = 0;
-        isTagProcessed = false;
+        memset(aFullTransformationName, 0, sizeof(aFullTransformationName));
+    }
+
+    Cipher::~Cipher()
+    {
+        if (isBioConnected)
+        {
+            BIO_free_all(pBioCipherFilter);
+        }
+        else
+        {
+            if (pBioOutput != NULL)
+            {
+                BIO_set_flags(pBioOutput, BIO_FLAGS_MEM_RDONLY);
+                BIO_free(pBioOutput);
+            }
+            if (pBioCipherFilter != NULL)
+            {
+                BIO_free(pBioCipherFilter);
+            }
+        }
+        if (pKey != NULL)
+        {
+            OPENSSL_free(pKey);
+        }
+        if (pIV != NULL)
+        {
+            OPENSSL_free(pIV);
+        }
+    }
+
+    int Cipher::retrieveOutput(byte* pOutput, int nOffset, int nLength)
+    {
+        bool isContinue = dealWithSkippingWhenRetrieveOutput(pOutput, nOffset, nLength);
+        if (isContinue)
+        {
+            int nInject = dealWithInjectionWhenRetrieveOutput(pOutput, nOffset, nLength);
+            int nCopy = dealWithCopyWhenRetrieveOutput(pOutput, nOffset, nLength, nInject);
+            return nCopy + nInject;
+        }
+        else
+        {
+            return 0;
+        }
+    }
+
+    bool Cipher::dealWithSkippingWhenRetrieveOutput(byte* pOutput, int nOffset, int nLength)
+    {
+        if (nBytesToBeSkipped > 0)
+        {
+            BYTE* pSkip = (BYTE*)OPENSSL_zalloc(nBytesToBeSkipped);
+            int bytesRead = BIO_read(pBioOutput, pSkip, nBytesToBeSkipped);
+            if (bytesRead < nBytesToBeSkipped)
+            {
+                nBytesToBeSkipped -= bytesRead;
+                OPENSSL_free(pSkip);
+                return false;
+            }
+            nBytesToBeSkipped -= bytesRead;
+            OPENSSL_free(pSkip);
+        }
+        return true;
+    }
+
+    int Cipher::dealWithInjectionWhenRetrieveOutput(byte* pOutput, int nOffset, int nLength)
+    {
+        int nInject = min(nLength, nBytesToBeInjected);
+        if (nInject > 0)
+        {
+            BYTE* pInjectStart = (pBytesToBeInjected + nBytesAlreadyInjected);
+            memcpy(pOutput + nOffset, pInjectStart, nInject);
+            nBytesToBeInjected -= nInject;
+            nBytesAlreadyInjected += nInject;
+        }
+        return nInject;
+    }
+
+    int Cipher::dealWithCopyWhenRetrieveOutput(byte* pOutput, int nOffset, int nLength, int nInject)
+    {
+        int nCopy = nLength - nInject;
+        int bytesRead = 0;
+        if (nCopy > 0)
+        {
+            bytesRead = BIO_read(pBioOutput, pOutput + nOffset + nInject, nCopy);
+            if (bytesRead == -1)
+                bytesRead = 0;
+        }
+
+        return bytesRead;
+    }
+
+    int Cipher::skipBytes(int _nBytesToBeSkipped)
+    {
+        nBytesToBeSkipped = _nBytesToBeSkipped;
+        return nBytesToBeSkipped;
+    }
+
+    int Cipher::injectBytes(byte* pInjectBytes, int nOffset, int _nBytesToBeInjected)
+    {
+        pBytesToBeInjected = (byte*)OPENSSL_realloc(pBytesToBeInjected, nBytesToBeInjected + _nBytesToBeInjected);
+        memcpy(pBytesToBeInjected + nBytesToBeInjected, pInjectBytes, _nBytesToBeInjected);
+        nBytesToBeInjected += _nBytesToBeInjected;
+        return nBytesToBeInjected;
+    }
+
+    void Cipher::shallowCopyKeyAndIV(byte* _pKey, int _nKeyLength, byte* _pIV, int _nIVLength)
+    {
+        this->pKey = _pKey;
+        this->nKeyLength = _nKeyLength;
+        this->pIV = _pIV;
+        this->nIVLength = _nIVLength;
+    }
+
+    bool Cipher::setupBioChain(byte* _pKey, int _nKeyLength, byte* _pIV, int _nIVLength)
+    {
+        EVP_CIPHER* evp_cipher = EVP_CIPHER_fetch(NULL/*lib context*/, aFullTransformationName, NULL/*prop queue*/);
+
+        pBioCipherFilter = BIO_new(BIO_f_cipher());
+        BIO_set_cipher(pBioCipherFilter, evp_cipher, _pKey, _pIV, (int)fEncrypt);
+        BIO_push(pBioCipherFilter, pBioOutput);
+        isBioConnected = true;
+        return true;
+    }
+
+    bool Cipher::reset()
+    {
+        nBytesAlreadyInjected = nBytesToBeSkipped = nBytesToBeInjected = 0;
+        if (pBytesToBeInjected != NULL)
+        {
+            OPENSSL_free(pBytesToBeInjected);
+        }
+
+        EVP_CIPHER_CTX* ctx;
+        BIO_get_cipher_ctx(pBioCipherFilter, &ctx);
+        EVP_CIPHER_CTX_reset(ctx);
+
+        BIO_reset(pBioCipherFilter);
+        BIO_reset(pBioOutput);
+        isBioConnected = false;
+        return setKeyAndIV(pKey, nKeyLength, pIV, nIVLength);
+    }
+
+    //==========================================================================================//
+
+    AESEAX::AESEAX(bool _fEncrypt):
+        Cipher(_fEncrypt),
+        big_N(NULL),
+        big_H(NULL),
+        data_size(0),
+        nBufferedPotentialTagLength(0),
+        isTagProcessed(false),
+        pBioCiphertextBackup(BIO_new(BIO_s_mem()))
+    {
+        memset(potentialTag, 0, sizeof(potentialTag));
     }
 
     AESEAX::~AESEAX()
@@ -186,46 +324,38 @@ namespace ARBITRARY_IO_CIPHER_OPENSSL {
         {
             OPENSSL_free(big_H);
         }
-        if (pBIOCiphertextBackup != NULL)
+        if (pBioCiphertextBackup != NULL)
         {
-            BIO_set_flags(pBIOCiphertextBackup, BIO_FLAGS_MEM_RDONLY);
-            BIO_free(pBIOCiphertextBackup);
+            BIO_set_flags(pBioCiphertextBackup, BIO_FLAGS_MEM_RDONLY);
+            BIO_free(pBioCiphertextBackup);
         }
+    }
 
-        if (fBioConnected)
-        {
-            BIO_free_all(pBIOCipherFilter);
-        }
-        else
-        {
-            if (pBIOOutput != NULL)
-            {
-                BIO_set_flags(pBIOOutput, BIO_FLAGS_MEM_RDONLY);
-                BIO_free(pBIOOutput);
-            }
-            if (pBIOCipherFilter != NULL)
-            {
-                BIO_free(pBIOCipherFilter);
-            }
-        }
+    bool AESEAX::reset()
+    {
+        data_size = 0;
+        BIO_reset(pBioCiphertextBackup);
+        memset(potentialTag, 0, sizeof(potentialTag));
+        nBufferedPotentialTagLength = 0;
+        isTagProcessed = false;
+        return Cipher::reset();
     }
 
     bool AESEAX::setKeyAndIV(byte* _pKey, int _nKeyLength, byte* _pIV, int _nIVLength)
     {
-        this->pKey = _pKey;
-        this->nKeyLength = _nKeyLength;
-        this->pIV = _pIV;
-        this->nIVLength = _nIVLength;
-        EVP_CIPHER* evp_cipher = EVP_CIPHER_fetch(NULL/*lib context*/, "AES-128-CTR", NULL/*prop queue*/);
+        // 1. set full transformation name
+        char const* p = "AES-128-CTR";
+        memcpy(aFullTransformationName, p, strlen(p));
+
+        // 2. shallow copy key and IV
+        shallowCopyKeyAndIV(_pKey, _nKeyLength, _pIV, _nIVLength);
+        
+        // 3. set up BIO chain
         int tag_size;
         big_N = cmac_with_prefix(pIV, nIVLength, 0, pKey, nKeyLength, &tag_size);
         big_H = cmac_with_prefix(NULL, 0, 1, pKey, nKeyLength, &tag_size);
 
-        pBIOCipherFilter = BIO_new(BIO_f_cipher());
-        BIO_set_cipher(pBIOCipherFilter, evp_cipher, pKey, big_N, (int)fEncrypt);
-
-        BIO_push(pBIOCipherFilter, pBIOOutput);
-        fBioConnected = true;
+        setupBioChain(_pKey, _nKeyLength, big_N, tag_size);
 
         return true;
     }
@@ -234,7 +364,7 @@ namespace ARBITRARY_IO_CIPHER_OPENSSL {
     {
         if (fEncrypt)
         {
-            BIO_write(pBIOCipherFilter, pInput + nOffset, nLength);
+            BIO_write(pBioCipherFilter, pInput + nOffset, nLength);
             data_size += nLength;
         }
         else
@@ -246,19 +376,19 @@ namespace ARBITRARY_IO_CIPHER_OPENSSL {
                 data_size += send;
                 if (send >= nBufferedPotentialTagLength)
                 {
-                    BIO_write(pBIOCipherFilter, potentialTag, nBufferedPotentialTagLength);
-                    BIO_write(pBIOCiphertextBackup, potentialTag, nBufferedPotentialTagLength);
+                    BIO_write(pBioCipherFilter, potentialTag, nBufferedPotentialTagLength);
+                    BIO_write(pBioCiphertextBackup, potentialTag, nBufferedPotentialTagLength);
                     send -= nBufferedPotentialTagLength;
-                    BIO_write(pBIOCipherFilter, pInput + nOffset, send);
-                    BIO_write(pBIOCiphertextBackup, pInput + nOffset, send);
+                    BIO_write(pBioCipherFilter, pInput + nOffset, send);
+                    BIO_write(pBioCiphertextBackup, pInput + nOffset, send);
                     memcpy(potentialTag, pInput + nOffset + send, 16);
                 }
                 else
                 {
                     byte tmp[16];
                     memcpy(tmp, potentialTag, 16);
-                    BIO_write(pBIOCipherFilter, potentialTag, send);
-                    BIO_write(pBIOCiphertextBackup, potentialTag, send);
+                    BIO_write(pBioCipherFilter, potentialTag, send);
+                    BIO_write(pBioCiphertextBackup, potentialTag, send);
                     memcpy(potentialTag, tmp + send, nBufferedPotentialTagLength - send);
                     memcpy(potentialTag + nBufferedPotentialTagLength - send, pInput + nOffset, nLength);
                 }
@@ -276,26 +406,19 @@ namespace ARBITRARY_IO_CIPHER_OPENSSL {
 
     bool AESEAX::endInput()
     {
-        //isInputEnd = true;
-        processTag();
-        return true;
-    }
-
-    void AESEAX::processTag()
-    {
         int tag_size;
         byte* ciphertext = (byte*)OPENSSL_zalloc(data_size);
         byte tag[16];
         byte one_block[16];
 
-        int bytesFromBackup = BIO_read(pBIOCiphertextBackup, ciphertext, data_size);
+        int bytesFromBackup = BIO_read(pBioCiphertextBackup, ciphertext, data_size);
 
         int bytesFromMainOutput = 0;
 
         if (bytesFromBackup < data_size)
         {
-            bytesFromMainOutput = BIO_read(pBIOOutput, ciphertext + bytesFromBackup, data_size - bytesFromBackup);
-            BIO_write(pBIOOutput, ciphertext + bytesFromBackup, data_size - bytesFromBackup);
+            bytesFromMainOutput = BIO_read(pBioOutput, ciphertext + bytesFromBackup, data_size - bytesFromBackup);
+            BIO_write(pBioOutput, ciphertext + bytesFromBackup, data_size - bytesFromBackup);
         }
 
         byte* big_C = cmac_with_prefix(ciphertext, data_size, 2, pKey, nKeyLength, &tag_size);
@@ -308,7 +431,7 @@ namespace ARBITRARY_IO_CIPHER_OPENSSL {
 
         if (fEncrypt)
         {
-            BIO_write(pBIOOutput, tag, sizeof(tag));
+            BIO_write(pBioOutput, tag, sizeof(tag));
         }
         else
         {            
@@ -317,213 +440,110 @@ namespace ARBITRARY_IO_CIPHER_OPENSSL {
                 throw std::runtime_error("tag mismatch");
         }
         isTagProcessed = true;
+
+        return true;
     }
 
-    int AESEAX::retrieveOutput(byte* pOutput, int nOffset, int nLength)
+    int AESEAX::dealWithCopyWhenRetrieveOutput(byte* pOutput, int nOffset, int nLength, int nInject)
     {
-        int nInject = 0, nCopy = 0;
-
-        if (nBytesToBeSkipped > 0)
-        {
-            BYTE* pSkip = (BYTE*)OPENSSL_zalloc(nBytesToBeSkipped);
-            int bytesRead = BIO_read(pBIOOutput, pSkip, nBytesToBeSkipped);
-
-            // bytesRead < nBytesToBeSkipped in general can happen and can be a valid situation.
-            // Assuming I only give a little input, haven't called endInput yet.
-            // Calling retrieveOutput now. Now bytesRead can likely be less than nBytesToBeSkipped.
-            // but I must not process tag now because I haven't called endInput
-            
-            if (bytesRead < nBytesToBeSkipped /* && isInputEnd */)
-            {
-                //processTag();
-                
-                // skipping output only makes sense on decryption.
-                // but on decryption, processing tag doesn't yield more output.
-
-                nBytesToBeSkipped -= bytesRead;
-                OPENSSL_free(pSkip);
-
-                return 0;
-            }
-            nBytesToBeSkipped -= bytesRead;
-            OPENSSL_free(pSkip);
-        }
-
-        nInject = min(nLength, nBytesToBeInjected);
-        if (nInject > 0)
-        {
-            BYTE* pInjectStart = (pBytesToBeInjected + nBytesAlreadyInjected);
-            memcpy(pOutput + nOffset, pInjectStart, nInject);
-            nBytesToBeInjected -= nInject;
-            nBytesAlreadyInjected += nInject;
-        }
-        nCopy = nLength - nInject;
+        int nCopy = nLength - nInject;
         int bytesRead = 0;
         int bytesRead2 = 0;
         if (nCopy > 0)
         {
-            bytesRead = BIO_read(pBIOOutput, pOutput + nOffset + nInject, nCopy);
+            bytesRead = BIO_read(pBioOutput, pOutput + nOffset + nInject, nCopy);
             if (bytesRead == -1)
                 bytesRead = 0;
 
             if (fEncrypt && !isTagProcessed)
             {
-                BIO_write(pBIOCiphertextBackup, pOutput + nOffset + nInject, bytesRead);
+                BIO_write(pBioCiphertextBackup, pOutput + nOffset + nInject, bytesRead);
             }
         }
         return nInject + bytesRead + bytesRead2;
     }
 
-    CBC::CBC(bool _fEncrypt)
+    //==========================================================================================//
+
+    CBC::CBC(bool _fEncrypt):Cipher(_fEncrypt),pChosenCipherName(NULL)
     {
-        fEncrypt = _fEncrypt;
-        pBIOOutput = BIO_new(BIO_s_mem());
-        pBIOCipherFilter = NULL;
-        fBioConnected = false;
     }
 
-    bool CBC::setKeyAndIV(byte* pKey, int nKeyLength, byte* pIV, int nIVLength)
+    bool CBC::setKeyAndIV(byte* _pKey, int _nKeyLength, byte* _pIV, int _nIVLength)
     {
-        EVP_CIPHER* evp_cipher = EVP_CIPHER_fetch(NULL/*lib context*/, pChosenCipherName, NULL/*prop queue*/);
-        pBIOCipherFilter = BIO_new(BIO_f_cipher());
-        BIO_set_cipher(pBIOCipherFilter, evp_cipher, pKey, pIV, (int)fEncrypt);
-        BIO_push(pBIOCipherFilter, pBIOOutput);
-        fBioConnected = true;
+        // 1. set full transformation name
+        memcpy(aFullTransformationName, pChosenCipherName, strlen(pChosenCipherName));
 
+        // 2. shallow copy key and IV
+        shallowCopyKeyAndIV(_pKey, _nKeyLength, _pIV, _nIVLength);
+
+        // 3. set up BIO chain
+        setupBioChain(_pKey, _nKeyLength, _pIV, _nIVLength);
         return true;
-    }
-
-    CBC::~CBC()
-    {
-        if (fBioConnected)
-        {
-            BIO_free_all(pBIOCipherFilter);
-        }
-        else
-        {
-            if (pBIOOutput != NULL)
-            {
-                BIO_set_flags(pBIOOutput, BIO_FLAGS_MEM_RDONLY);
-                BIO_free(pBIOOutput);
-            }
-            if (pBIOCipherFilter != NULL)
-            {
-                BIO_free(pBIOCipherFilter);
-            }
-        }
     }
 
     bool CBC::submitInput(byte* pInput, int nOffset, int nLength)
     {
-        BIO_write(pBIOCipherFilter, pInput + nOffset, nLength);
+        BIO_write(pBioCipherFilter, pInput + nOffset, nLength);
         return true;
     }
 
     bool CBC::endInput()
     {
-        BIO_flush(pBIOCipherFilter);
+        BIO_flush(pBioCipherFilter);
         return true;
     }
 
-    int CBC::retrieveOutput(byte* pOutput, int nOffset, int nLength)
-    {
-        int nInject = 0, nCopy = 0;
+    //==========================================================================================//
 
-        if (nBytesToBeSkipped > 0)
-        {
-            BYTE* pSkip = (BYTE*)OPENSSL_zalloc(nBytesToBeSkipped);
-            int bytesRead = BIO_read(pBIOOutput, pSkip, nBytesToBeSkipped);
-            if (bytesRead < nBytesToBeSkipped)
-            {
-                nBytesToBeSkipped -= bytesRead;
-                OPENSSL_free(pSkip);
-                return 0;
-            }
-            nBytesToBeSkipped -= bytesRead;
-            OPENSSL_free(pSkip);
-        }
-
-        nInject = min(nLength, nBytesToBeInjected);
-        if (nInject > 0)
-        {
-            BYTE* pInjectStart = (pBytesToBeInjected + nBytesAlreadyInjected);
-            memcpy(pOutput + nOffset, pInjectStart, nInject);
-            nBytesToBeInjected -= nInject;
-            nBytesAlreadyInjected += nInject;
-        }
-        nCopy = nLength - nInject;
-        int bytesRead = 0;
-        if (nCopy > 0)
-        {
-            bytesRead = BIO_read(pBIOOutput, pOutput + nOffset + nInject, nCopy);
-            if (bytesRead == -1)
-                bytesRead = 0;
-        }
-
-        return nInject + bytesRead;
-    }
-
-    AESCBC::AESCBC(bool isEncrypt) : CBC::CBC(isEncrypt) {}
-    
-    bool AESCBC::setKeyAndIV(byte* pKey, int nKeyLength, byte* pIV, int nIVLength)
+    AESCBC::AESCBC(bool isEncrypt) : CBC(isEncrypt)
     {
         pChosenCipherName = cipherName[0];
-        return CBC::setKeyAndIV(pKey, nKeyLength, pIV, nIVLength);
-
     }
-
-    DES3CBC::DES3CBC(bool isEncrypt) : CBC::CBC(isEncrypt) {}
-
-    bool DES3CBC::setKeyAndIV(byte* pKey, int nKeyLength, byte* pIV, int nIVLength)
+    
+    DES3CBC::DES3CBC(bool isEncrypt) : CBC(isEncrypt) 
     {
         pChosenCipherName = cipherName[1];
-        return CBC::setKeyAndIV(pKey, nKeyLength, pIV, nIVLength);
     }
 
-    AESGCM::AESGCM (bool _fEncrypt)
+    //==========================================================================================//
+
+    AESGCM::AESGCM (bool _fEncrypt):Cipher(_fEncrypt), nBufferedPotentialTagLength(0)
     {
-        fEncrypt = _fEncrypt;
-        pBIOOutput = BIO_new(BIO_s_mem());
-        pBIOCipher = NULL;
-        fBioConnected = false;
+        memset(potentialTag, 0, sizeof(potentialTag));
+    }
+
+    bool AESGCM::reset()
+    {
+        memset(potentialTag, 0, sizeof(potentialTag));
         nBufferedPotentialTagLength = 0;
+        return Cipher::reset();
     }
 
-    AESGCM::~AESGCM()
+    bool AESGCM::setKeyAndIV(byte* _pKey, int _nKeyLength, byte* _pIV, int _nIVLength)
     {
-        if (fBioConnected)
-        {
-            BIO_free_all(pBIOCipher);
-        }
-        else
-        {
-            if (pBIOOutput != NULL)
-            {
-                BIO_set_flags(pBIOOutput, BIO_FLAGS_MEM_RDONLY);
-                BIO_free(pBIOOutput);
-            }
-            if (pBIOCipher != NULL)
-            {
-                BIO_free(pBIOCipher);
-            }
-        }
-    }
+        // 1. set full transformation name
+        char const* p = "AES-128-GCM";
+        memcpy(aFullTransformationName, p, strlen(p));
 
-    bool AESGCM::setKeyAndIV(byte* pKey, int nKeyLength, byte* pIV, int nIVLength)
-    {
-        EVP_CIPHER* evp_cipher = EVP_CIPHER_fetch(NULL/*lib context*/, "AES-128-GCM", NULL/*prop queue*/);
-        BIO* bio_cipher = BIO_new(BIO_f_cipher());
+        // 2. shallow copy key and IV
+        shallowCopyKeyAndIV(_pKey, _nKeyLength, _pIV, _nIVLength);
+
+        // 3. set up BIO chain
+        EVP_CIPHER* evp_cipher = EVP_CIPHER_fetch(NULL/*lib context*/, aFullTransformationName, NULL/*prop queue*/);
+        
+        pBioCipherFilter = BIO_new(BIO_f_cipher());
 
         if (nIVLength == 12)
         {
-            BIO_set_cipher(bio_cipher, evp_cipher, pKey, pIV, (int)fEncrypt);
+            BIO_set_cipher(pBioCipherFilter, evp_cipher, pKey, pIV, (int)fEncrypt);
         }
         else
         {
-            BIO_set_cipher(bio_cipher, evp_cipher, pKey, NULL, (int)fEncrypt);
+            BIO_set_cipher(pBioCipherFilter, evp_cipher, pKey, NULL, (int)fEncrypt);
 
             EVP_CIPHER_CTX* ctx;
-            BIO_get_cipher_ctx(bio_cipher, &ctx);
+            BIO_get_cipher_ctx(pBioCipherFilter, &ctx);
             EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_IVLEN, nIVLength, NULL);
             if (fEncrypt)
             {
@@ -534,9 +554,9 @@ namespace ARBITRARY_IO_CIPHER_OPENSSL {
                 EVP_DecryptInit_ex(ctx, NULL, NULL, NULL, pIV);
             }
         }
-        BIO_push(bio_cipher, pBIOOutput);
-        fBioConnected = true;
-        pBIOCipher = bio_cipher;
+        BIO_push(pBioCipherFilter, pBioOutput);
+        isBioConnected = true;
+
         return true;
     }
 
@@ -544,7 +564,7 @@ namespace ARBITRARY_IO_CIPHER_OPENSSL {
     {
         if (fEncrypt)
         {
-            BIO_write(pBIOCipher, pInput + nOffset, nLength);
+            BIO_write(pBioCipherFilter, pInput + nOffset, nLength);
         }
         else
         {
@@ -554,9 +574,9 @@ namespace ARBITRARY_IO_CIPHER_OPENSSL {
                 int send = total - 16;
                 if (send >= nBufferedPotentialTagLength)
                 {
-                    BIO_write(pBIOCipher, potentialTag, nBufferedPotentialTagLength);
+                    BIO_write(pBioCipherFilter, potentialTag, nBufferedPotentialTagLength);
                     send -= nBufferedPotentialTagLength;
-                    BIO_write(pBIOCipher, pInput + nOffset, send);
+                    BIO_write(pBioCipherFilter, pInput + nOffset, send);
                     memcpy(potentialTag, pInput + nOffset + send, 16);
                         
                 }
@@ -564,7 +584,7 @@ namespace ARBITRARY_IO_CIPHER_OPENSSL {
                 {
                     byte tmp[16];
                     memcpy(tmp, potentialTag, 16);
-                    BIO_write(pBIOCipher, potentialTag, send);
+                    BIO_write(pBioCipherFilter, potentialTag, send);
                     memcpy(potentialTag, tmp + send, nBufferedPotentialTagLength - send);
                     memcpy(potentialTag + nBufferedPotentialTagLength - send, pInput + nOffset, nLength);
                 }
@@ -583,20 +603,19 @@ namespace ARBITRARY_IO_CIPHER_OPENSSL {
     {
         if (fEncrypt)
         {
-            BIO_flush(pBIOCipher);
+            BIO_flush(pBioCipherFilter);
             EVP_CIPHER_CTX* ctx;
-            BIO_get_cipher_ctx(pBIOCipher, &ctx);
+            BIO_get_cipher_ctx(pBioCipherFilter, &ctx);
             byte tag[16];
             OSSL_PARAM params[2] = { OSSL_PARAM_END, OSSL_PARAM_END };
             params[0] = OSSL_PARAM_construct_octet_string(OSSL_CIPHER_PARAM_AEAD_TAG, tag, sizeof(tag));
             EVP_CIPHER_CTX_get_params(ctx, params);
-            BIO_write(pBIOOutput, tag, 16);
+            BIO_write(pBioOutput, tag, 16);
         }
         else
         {
-            //BIO_flush(pBIOCipher);
             EVP_CIPHER_CTX* ctx;
-            BIO_get_cipher_ctx(pBIOCipher, &ctx);
+            BIO_get_cipher_ctx(pBioCipherFilter, &ctx);
             OSSL_PARAM params[2] = { OSSL_PARAM_END, OSSL_PARAM_END };
             params[0] = OSSL_PARAM_construct_octet_string(OSSL_CIPHER_PARAM_AEAD_TAG,
                 (void*)potentialTag, 16);
@@ -605,45 +624,29 @@ namespace ARBITRARY_IO_CIPHER_OPENSSL {
 
             int tmpLen;
             // verify tag
-            EVP_DecryptFinal_ex(ctx, NULL/*can this be NULL?*/, &tmpLen); // must call final if there is padding
+            int ret = EVP_DecryptFinal_ex(ctx, NULL/*can this be NULL?*/, &tmpLen); // must call final if there is padding
+            if (ret != 1)
+            {
+                throw std::runtime_error("AES GCM decryption authentication tag mismatch");
+            }
         }
         return true;
     }
-    int AESGCM::retrieveOutput(byte* pOutput, int nOffset, int nLength)
+    
+    int AESGCM::dealWithCopyWhenRetrieveOutput(byte* pOutput, int nOffset, int nLength, int nInject)
     {
-        int nInject = 0, nCopy = 0;
-
-        if (nBytesToBeSkipped > 0)
-        {
-            BYTE* pSkip = (BYTE*)OPENSSL_zalloc(nBytesToBeSkipped);
-            int bytesRead = BIO_read(pBIOOutput, pSkip, nBytesToBeSkipped);
-            if (bytesRead < nBytesToBeSkipped)
-            {
-                OPENSSL_free(pSkip);
-                return 0;
-            }
-            nBytesToBeSkipped -= bytesRead;
-            OPENSSL_free(pSkip);
-        }
-
-        nInject = min(nLength, nBytesToBeInjected);
-        if (nInject > 0)
-        {
-            BYTE* pInjectStart = (pBytesToBeInjected + nBytesAlreadyInjected);
-            memcpy(pOutput + nOffset, pInjectStart, nInject);
-            nBytesToBeInjected -= nInject;
-            nBytesAlreadyInjected += nInject;
-        }
-        nCopy = nLength - nInject;
+        int nCopy = nLength - nInject;
         int bytesRead = 0;
         if (nCopy > 0)
         {
-            bytesRead = BIO_read(pBIOOutput, pOutput + nOffset + nInject, nCopy);
+            bytesRead = BIO_read(pBioOutput, pOutput + nOffset + nInject, nCopy);
             if (bytesRead == -1)
                 bytesRead = 0;
         }
         return nInject + bytesRead;
     }
+
+    //==========================================================================================//
 
     bool CipherSetKeyAndInitialVector(Cipher* pCipher, byte* pKey, int nKeyLength, byte* pIV, int nIVLength)
     {
@@ -683,6 +686,11 @@ namespace ARBITRARY_IO_CIPHER_OPENSSL {
         default:
             return NULL;
         }
+    }
+
+    bool CipherReset(Cipher* p)
+    {
+        return p->reset();
     }
 
     bool CipherRelease(Cipher* p)
