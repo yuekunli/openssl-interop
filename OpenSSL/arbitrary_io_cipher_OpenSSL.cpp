@@ -187,6 +187,10 @@ namespace ARBITRARY_IO_CIPHER_OPENSSL {
         {
             OPENSSL_free(pIV);
         }
+        if (pBytesToBeInjected != NULL)
+        {
+            OPENSSL_free(pBytesToBeInjected);
+        }
     }
 
     int Cipher::retrieveOutput(byte* pOutput, int nOffset, int nLength)
@@ -302,7 +306,50 @@ namespace ARBITRARY_IO_CIPHER_OPENSSL {
 
     //==========================================================================================//
 
-    AESEAX::AESEAX(bool _fEncrypt):
+    CBC::CBC(bool _fEncrypt):Cipher(_fEncrypt),pChosenCipherName(NULL)
+    {
+    }
+
+    bool CBC::setKeyAndIV(byte* _pKey, int _nKeyLength, byte* _pIV, int _nIVLength)
+    {
+        // 1. set full transformation name
+        memcpy(aFullTransformationName, pChosenCipherName, strlen(pChosenCipherName));
+
+        // 2. shallow copy key and IV
+        shallowCopyKeyAndIV(_pKey, _nKeyLength, _pIV, _nIVLength);
+
+        // 3. set up BIO chain
+        setupBioChain(_pKey, _nKeyLength, _pIV, _nIVLength);
+        return true;
+    }
+
+    bool CBC::submitInput(byte* pInput, int nOffset, int nLength)
+    {
+        BIO_write(pBioCipherFilter, pInput + nOffset, nLength);
+        return true;
+    }
+
+    bool CBC::endInput()
+    {
+        BIO_flush(pBioCipherFilter);
+        return true;
+    }
+
+    //==========================================================================================//
+
+    AESCBC::AESCBC(bool isEncrypt) : CBC(isEncrypt)
+    {
+        pChosenCipherName = cipherName[0];
+    }
+    
+    DES3CBC::DES3CBC(bool isEncrypt) : CBC(isEncrypt) 
+    {
+        pChosenCipherName = cipherName[1];
+    }
+
+    //==========================================================================================//
+
+    AESEAX::AESEAX(bool _fEncrypt) :
         Cipher(_fEncrypt),
         big_N(NULL),
         big_H(NULL),
@@ -349,7 +396,7 @@ namespace ARBITRARY_IO_CIPHER_OPENSSL {
 
         // 2. shallow copy key and IV
         shallowCopyKeyAndIV(_pKey, _nKeyLength, _pIV, _nIVLength);
-        
+
         // 3. set up BIO chain
         int tag_size;
         big_N = cmac_with_prefix(pIV, nIVLength, 0, pKey, nKeyLength, &tag_size);
@@ -392,7 +439,7 @@ namespace ARBITRARY_IO_CIPHER_OPENSSL {
                     memcpy(potentialTag, tmp + send, nBufferedPotentialTagLength - send);
                     memcpy(potentialTag + nBufferedPotentialTagLength - send, pInput + nOffset, nLength);
                 }
-                nBufferedPotentialTagLength = 16;   
+                nBufferedPotentialTagLength = 16;
             }
             else
             {
@@ -434,7 +481,7 @@ namespace ARBITRARY_IO_CIPHER_OPENSSL {
             BIO_write(pBioOutput, tag, sizeof(tag));
         }
         else
-        {            
+        {
             int diff = memcmp(tag, potentialTag, 16);
             if (diff != 0)
                 throw std::runtime_error("tag mismatch");
@@ -463,50 +510,9 @@ namespace ARBITRARY_IO_CIPHER_OPENSSL {
         return nInject + bytesRead + bytesRead2;
     }
 
-    //==========================================================================================//
-
-    CBC::CBC(bool _fEncrypt):Cipher(_fEncrypt),pChosenCipherName(NULL)
-    {
-    }
-
-    bool CBC::setKeyAndIV(byte* _pKey, int _nKeyLength, byte* _pIV, int _nIVLength)
-    {
-        // 1. set full transformation name
-        memcpy(aFullTransformationName, pChosenCipherName, strlen(pChosenCipherName));
-
-        // 2. shallow copy key and IV
-        shallowCopyKeyAndIV(_pKey, _nKeyLength, _pIV, _nIVLength);
-
-        // 3. set up BIO chain
-        setupBioChain(_pKey, _nKeyLength, _pIV, _nIVLength);
-        return true;
-    }
-
-    bool CBC::submitInput(byte* pInput, int nOffset, int nLength)
-    {
-        BIO_write(pBioCipherFilter, pInput + nOffset, nLength);
-        return true;
-    }
-
-    bool CBC::endInput()
-    {
-        BIO_flush(pBioCipherFilter);
-        return true;
-    }
 
     //==========================================================================================//
 
-    AESCBC::AESCBC(bool isEncrypt) : CBC(isEncrypt)
-    {
-        pChosenCipherName = cipherName[0];
-    }
-    
-    DES3CBC::DES3CBC(bool isEncrypt) : CBC(isEncrypt) 
-    {
-        pChosenCipherName = cipherName[1];
-    }
-
-    //==========================================================================================//
 
     AESGCM::AESGCM (bool _fEncrypt):Cipher(_fEncrypt), nBufferedPotentialTagLength(0)
     {

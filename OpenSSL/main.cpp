@@ -50,5 +50,7 @@ int main()
 	//OPENSSL_BIO_TEST::read_from_BIO();
 	//OPENSSL_BIO_TEST::set_BIO_position();
 
-	INTEROP_TEST_ARBITRARY_IO_CIPHER::test();
+	//INTEROP_TEST_ARBITRARY_IO_CIPHER::test();
+
+	INTEROP_TEST_ARBITRARY_IO_CIPHER2::test();
 }

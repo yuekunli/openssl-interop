@@ -59,6 +59,8 @@ namespace ARBITRARY_IO_CIPHER_OPENSSL {
         virtual bool reset();
     };
 
+    //===========================================================================//
+
     class CBC : Cipher
     {
     protected:
@@ -72,6 +74,8 @@ namespace ARBITRARY_IO_CIPHER_OPENSSL {
         bool submitInput(byte* pInput, int nOffset, int nLength);
         bool endInput();
     };
+
+    //===========================================================================//
 
     class AESCBC : CBC
     {
@@ -91,6 +95,8 @@ namespace ARBITRARY_IO_CIPHER_OPENSSL {
         //bool setKeyAndIV(byte* pKey, int nKeyLength, byte* pIV, int nIvLength);
     };
 
+    //===========================================================================//
+
 	class AESGCM : Cipher
 	{
     private:
@@ -106,6 +112,8 @@ namespace ARBITRARY_IO_CIPHER_OPENSSL {
 		bool endInput();
         bool reset() override;
 	};
+
+    //===========================================================================//
 
     class AESEAX : Cipher
     {
@@ -129,6 +137,7 @@ namespace ARBITRARY_IO_CIPHER_OPENSSL {
         bool reset() override;
     };
 
+    //===========================================================================//
 
     bool CipherSetKeyAndInitialVector(Cipher* pCipher, byte* pKey, int nKeyLength, byte* pIV, int nIVLength);
 

@@ -27,8 +27,6 @@ namespace INTEROP_TEST_DH {
 
 namespace INTEROP_TEST_SYMMETRICCRYPT {
 	void test_Symmetric_Cipher();
-	void test12();
-	void test13();
 }
 
 namespace INTEROP_TEST_CMAC {
@@ -54,8 +52,8 @@ namespace INTEROP_TEST_EAX {
 }
 
 namespace OPENSSL_ASN1_TEST {
-	void openssl_asn1_test1();
-	void openssl_asn1_test2();
+	void numeric_dot_to_long_name();
+	void encoded_oid_to_numeric_dot_to_long_name();
 }
 
 namespace OPENSSL_LIBCTX_PROVIDER_TEST {
@@ -69,5 +67,9 @@ namespace OPENSSL_BIO_TEST {
 }
 
 namespace INTEROP_TEST_ARBITRARY_IO_CIPHER {
+	void test();
+}
+
+namespace INTEROP_TEST_ARBITRARY_IO_CIPHER2 {
 	void test();
 }
