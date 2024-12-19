@@ -11,6 +11,9 @@ namespace CRYPTOPP_DEMO {
 	void demo_ECIES_2();
 }
 
+namespace CRYPTOPP_EC_GEN_TEST {
+	void ecdsa_generate_and_print_key_pair();
+}
 
 namespace INTEROP_TEST_ECIES {
 	void test_ECIES();
@@ -66,10 +69,23 @@ namespace OPENSSL_BIO_TEST {
 	void set_BIO_position();
 }
 
+
+namespace OPENSSL_ECDSA_SIG_CONVERT {
+	void ecdsa_sig_generate_and_verify_keep_DER_format();
+	void ecdsa_sig_generate_and_verify_makeshift_convert();
+	void ecdsa_sig_generate_and_verify__makeshift_der2raw__openssl_raw2der();
+	void ecdsa_sig_generate_and_verify__openssl_der2raw__makeshift_raw2der();
+	void ecdsa_signature__convert_key_to_der__openssl_convert_sig();
+}
+
 namespace INTEROP_TEST_ARBITRARY_IO_CIPHER {
 	void test();
 }
 
 namespace INTEROP_TEST_ARBITRARY_IO_CIPHER2 {
 	void test();
+}
+
+namespace INTEROP_TEST_ARBITRARY_IO_CIPHER3 {
+	void test2();
 }

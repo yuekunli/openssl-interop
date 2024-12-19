@@ -17,6 +17,28 @@ namespace AIO_CIPHER_OPENSSL2 {
 	byte* generateCMAC_3(byte* plaintext, int plaintextLength, byte* key, int key_size, int* tag_size);
 	byte* cmac_with_prefix(byte* data, int data_len, int prefix, byte* key, int key_size, int* tag_size);
 
+	class CipherInterface
+	{
+	public:
+		virtual bool setKeyAndIV(byte* pKey, int nKeyLength, byte* pIV, int nIVLength) = 0;
+
+		virtual int skipBytes(int nSkipBytesCount) = 0;
+
+		virtual int injectBytes(byte* pInjectBytes, int nOffset, int nInjectBytesCount) = 0;
+
+		virtual bool submitInput(byte* pInput, int nOffset, int nLength) = 0;
+
+		virtual bool endInput() = 0;
+
+		virtual int retrieveOutput(byte* pOutput, int nOffset, int nLength) = 0;
+
+		virtual bool reset() = 0;
+
+		CipherInterface() = default;
+
+		virtual ~CipherInterface() = default;
+	};
+
 	class BlockCipher
 	{
 	public:
@@ -259,19 +281,22 @@ namespace AIO_CIPHER_OPENSSL2 {
 	};
 
 	template<class Type_BlockCipher>
-	class CBC : CipherMode<Type_BlockCipher>
+	class CBC : CipherMode<Type_BlockCipher>, public CipherInterface
 	{
 	private:
 		using CipherMode<Type_BlockCipher>::pBioCipherFilter;
+		//using CipherMode<Type_BlockCipher>::setKeyAndIV;
+		//using CipherMode<Type_BlockCipher>::skipBytes;
+		//using CipherMode<Type_BlockCipher>::injectBytes;
+		//using CipherMode<Type_BlockCipher>::retrieveOutput;
+		//using CipherMode<Type_BlockCipher>::reset;
+
+		char const* getModeName()
+		{
+			return "CBC";
+		}
 
 	public:
-		
-		using CipherMode<Type_BlockCipher>::setKeyAndIV;
-		using CipherMode<Type_BlockCipher>::skipBytes;
-		using CipherMode<Type_BlockCipher>::injectBytes;
-		using CipherMode<Type_BlockCipher>::retrieveOutput;
-		using CipherMode<Type_BlockCipher>::reset;
-
 		CBC(bool _isEncrypt) :CipherMode<Type_BlockCipher>(_isEncrypt) {}
 
 		~CBC() = default;
@@ -281,11 +306,8 @@ namespace AIO_CIPHER_OPENSSL2 {
 		CBC& operator =(CBC const&) = delete;
 		CBC& operator =(CBC&&) = delete;
 
-		char const* getModeName()
-		{
-			return "CBC";
-		}
-		
+
+
 		bool submitInput(byte* pInput, int nOffset, int nLength)
 		{
 			BIO_write(pBioCipherFilter, pInput + nOffset, nLength);
@@ -295,6 +317,31 @@ namespace AIO_CIPHER_OPENSSL2 {
 		{
 			BIO_flush(pBioCipherFilter);
 			return true;
+		}
+
+		bool setKeyAndIV(byte* _pKey, int _nKeyLength, byte* _pIV, int _nIVLength)
+		{
+			return CipherMode<Type_BlockCipher>::setKeyAndIV(_pKey, _nKeyLength, _pIV, _nIVLength);
+		}
+
+		int skipBytes(int nSkipBytesCount)
+		{
+			return CipherMode<Type_BlockCipher>::skipBytes(nSkipBytesCount);
+		}
+
+		int injectBytes(byte* pInjectBytes, int nOffset, int nInjectBytesCount)
+		{
+			return CipherMode<Type_BlockCipher>::injectBytes(pInjectBytes, nOffset, nInjectBytesCount);
+		}
+
+		int retrieveOutput(byte* pOutput, int nOffset, int nLength)
+		{
+			return CipherMode<Type_BlockCipher>::retrieveOutput(pOutput, nOffset, nLength);
+		}
+
+		bool reset()
+		{
+			return CipherMode<Type_BlockCipher>::reset();
 		}
 	};
 
@@ -347,7 +394,7 @@ namespace AIO_CIPHER_OPENSSL2 {
 	};
 
 	template<class Type_BlockCipher>
-	class GCM : AuthCipher<Type_BlockCipher, 16>
+	class GCM : AuthCipher<Type_BlockCipher, 16>, public CipherInterface
 	{
 	private:
 		using AuthCipher<Type_BlockCipher, 16>::isEncrypt;
@@ -364,26 +411,6 @@ namespace AIO_CIPHER_OPENSSL2 {
 
 		using AuthCipher<Type_BlockCipher, 16>::getTransformationName;
 		using AuthCipher<Type_BlockCipher, 16>::nTagSize;
-	public:
-		using AuthCipher<Type_BlockCipher, 16>::setKeyAndIV;
-		using AuthCipher<Type_BlockCipher, 16>::skipBytes;
-		using AuthCipher<Type_BlockCipher, 16>::injectBytes;
-		using AuthCipher<Type_BlockCipher, 16>::retrieveOutput;
-		using AuthCipher<Type_BlockCipher, 16>::reset;
-
-		GCM(bool _isEncrypt) :AuthCipher<Type_BlockCipher, 16>(_isEncrypt)
-		{
-		}
-		~GCM() = default;
-		GCM(GCM const&) = delete;
-		GCM(GCM&&) = delete;
-		GCM& operator =(GCM const&) = delete;
-		GCM& operator =(GCM&&) = delete;
-
-		char const* getModeName()
-		{
-			return "GCM";
-		}
 
 		bool setupBioChain(byte* _pKey, int _nKeyLength, byte* _pIv, int _nIvLength) override
 		{
@@ -417,6 +444,28 @@ namespace AIO_CIPHER_OPENSSL2 {
 
 			return true;
 		}
+
+		char const* getModeName()
+		{
+			return "GCM";
+		}
+
+	public:
+		//using AuthCipher<Type_BlockCipher, 16>::setKeyAndIV;
+		//using AuthCipher<Type_BlockCipher, 16>::skipBytes;
+		//using AuthCipher<Type_BlockCipher, 16>::injectBytes;
+		//using AuthCipher<Type_BlockCipher, 16>::retrieveOutput;
+		//using AuthCipher<Type_BlockCipher, 16>::reset;
+
+		GCM(bool _isEncrypt) :AuthCipher<Type_BlockCipher, 16>(_isEncrypt)
+		{
+		}
+		~GCM() = default;
+		GCM(GCM const&) = delete;
+		GCM(GCM&&) = delete;
+		GCM& operator =(GCM const&) = delete;
+		GCM& operator =(GCM&&) = delete;
+
 
 		bool submitInput(byte* pInput, int nOffset, int nLength)
 		{
@@ -490,10 +539,35 @@ namespace AIO_CIPHER_OPENSSL2 {
 			}
 			return true;
 		}
+		
+		bool setKeyAndIV(byte* _pKey, int _nKeyLength, byte* _pIv, int _nIvLength)
+		{
+			return AuthCipher<Type_BlockCipher, 16>::setKeyAndIV(_pKey, _nKeyLength, _pIv, _nIvLength);
+		}
+		
+		int retrieveOutput(byte* pOutput, int nOffset, int nLength)
+		{
+			return AuthCipher<Type_BlockCipher, 16>::retrieveOutput(pOutput, nOffset, nLength);
+		}
+
+		int skipBytes(int nSkipBytesCount)
+		{
+			return AuthCipher<Type_BlockCipher, 16>::skipBytes(nSkipBytesCount);
+		}
+
+		int injectBytes(byte* pInjectBytes, int nOffset, int nInjectBytesCount)
+		{
+			return AuthCipher<Type_BlockCipher, 16>::injectBytes(pInjectBytes, nOffset, nInjectBytesCount);
+		}
+
+		bool reset()
+		{
+			return AuthCipher<Type_BlockCipher, 16>::reset();
+		}
 	};
 
 	template<class Type_BlockCipher>
-	class EAX : AuthCipher<Type_BlockCipher, 16>
+	class EAX : AuthCipher<Type_BlockCipher, 16>, public CipherInterface
 	{
 	private:
 		using AuthCipher<Type_BlockCipher, 16>::isEncrypt;
@@ -519,10 +593,33 @@ namespace AIO_CIPHER_OPENSSL2 {
 		bool isTagProcessed;
 		BIO* pBioCiphertextBackup;
 
+		char const* getModeName()
+		{
+			return "CTR";
+		}
+
+		int dealWithCopyWhenRetrieveOutput(byte* pOutput, int nOffset, int nLength) override
+		{
+			int nCopy = nLength;
+			int bytesRead = 0;
+			if (nCopy > 0)
+			{
+				bytesRead = BIO_read(pBioOutput, pOutput + nOffset, nCopy);
+				if (bytesRead == -1)
+					bytesRead = 0;
+
+				if (isEncrypt && !isTagProcessed)
+				{
+					BIO_write(pBioCiphertextBackup, pOutput + nOffset, bytesRead);
+				}
+			}
+			return bytesRead;
+		}
+
 	public:
-		using AuthCipher<Type_BlockCipher, 16>::skipBytes;
-		using AuthCipher<Type_BlockCipher, 16>::injectBytes;
-		using AuthCipher<Type_BlockCipher, 16>::retrieveOutput;
+		//using AuthCipher<Type_BlockCipher, 16>::skipBytes;
+		//using AuthCipher<Type_BlockCipher, 16>::injectBytes;
+		//using AuthCipher<Type_BlockCipher, 16>::retrieveOutput;
 		
 
 		EAX(bool _isEncrypt) :
@@ -557,10 +654,7 @@ namespace AIO_CIPHER_OPENSSL2 {
 		EAX& operator =(EAX const&) = delete;
 		EAX& operator =(EAX&&) = delete;
 
-		char const* getModeName()
-		{
-			return "CTR";
-		}
+
 
 		bool setKeyAndIV(byte* _pKey, int _nKeyLength, byte* _pIv, int _nIvLength) override
 		{
@@ -664,24 +758,6 @@ namespace AIO_CIPHER_OPENSSL2 {
 			return true;
 		}
 
-		int dealWithCopyWhenRetrieveOutput(byte* pOutput, int nOffset, int nLength) override
-		{
-			int nCopy = nLength;
-			int bytesRead = 0;
-			if (nCopy > 0)
-			{
-				bytesRead = BIO_read(pBioOutput, pOutput + nOffset, nCopy);
-				if (bytesRead == -1)
-					bytesRead = 0;
-
-				if (isEncrypt && !isTagProcessed)
-				{
-					BIO_write(pBioCiphertextBackup, pOutput + nOffset, bytesRead);
-				}
-			}
-			return bytesRead;
-		}
-
 		bool reset() override
 		{
 			dataSize = 0;
@@ -689,35 +765,30 @@ namespace AIO_CIPHER_OPENSSL2 {
 			isTagProcessed = false;
 			return AuthCipher<Type_BlockCipher, 16>::reset();
 		}
-	};
 
-	struct Cipher_t
-	{
-		int nAlgo;
-		CBC<AES>* pCbcAes;
-		CBC<DES3>* pCbcDes3;
-		GCM<AES>* pGcmAes;
-		EAX<AES>* pEaxAes;
-		Cipher_t(int _nAlgorithm) :
-			nAlgo(_nAlgorithm),
-			pCbcAes(NULL),
-			pCbcDes3(NULL),
-			pGcmAes(NULL),
-			pEaxAes(NULL)
-		{}
-		~Cipher_t()
+		int skipBytes(int nSkipBytesCount)
 		{
-			if (pCbcAes != NULL)
-				delete pCbcAes;
-			if (pCbcDes3 != NULL)
-				delete pCbcDes3;
-			if (pGcmAes != NULL)
-				delete pGcmAes;
-			if (pEaxAes != NULL)
-				delete pEaxAes;
+			return AuthCipher<Type_BlockCipher, 16>::skipBytes(nSkipBytesCount);
+		}
+
+		int injectBytes(byte* pInjectBytes, int nOffset, int nInjectBytesCount)
+		{
+			return AuthCipher<Type_BlockCipher, 16>::injectBytes(pInjectBytes, nOffset, nInjectBytesCount);
+		}
+
+		int retrieveOutput(byte* pOutput, int nOffset, int nLength)
+		{
+			return AuthCipher<Type_BlockCipher, 16>::retrieveOutput(pOutput, nOffset, nLength);
 		}
 	};
-	typedef struct Cipher_t Cipher;
+
+
+	typedef CipherInterface Cipher;
+
+	Cipher* CipherInitialize(int nAlgorithm, bool isEncrypt);
+
+	bool CipherRelease(Cipher* p);
+
 
 	bool CipherSetKeyAndInitialVector(Cipher* pCipher, byte* pKey, int nKeyLength, byte* pIV, int nIVLength);
 
@@ -730,10 +801,6 @@ namespace AIO_CIPHER_OPENSSL2 {
 	bool CipherEndInput(Cipher* pCipher);
 
 	int CipherRetrieveOutput(Cipher* pCipher, byte* pOutput, int nOffset, int nLength);
-
-	Cipher* CipherInitialize(int nAlgorithm, bool isEncrypt);
-
-	bool CipherRelease(Cipher* p);
 
 	bool CipherReset(Cipher* p);
 }

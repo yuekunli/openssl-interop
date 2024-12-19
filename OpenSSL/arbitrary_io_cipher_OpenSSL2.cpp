@@ -177,7 +177,7 @@ namespace AIO_CIPHER_OPENSSL2 {
     }
 
     //==========================================================================================//
-
+#if 0
     bool CipherSetKeyAndInitialVector(Cipher* pCipher, byte* pKey, int nKeyLength, byte* pIV, int nIVLength)
     {
         switch (pCipher->nAlgo)
@@ -327,4 +327,63 @@ namespace AIO_CIPHER_OPENSSL2 {
             return 0;
         }
     }
+#endif
+
+    Cipher* CipherInitialize(int nAlgorithm, bool isEncrypt)
+    {
+        switch (nAlgorithm)
+        {
+        case 1:
+            return new CBC<AES>(isEncrypt);
+        case 2:
+            return new EAX<AES>(isEncrypt);
+        case 3:
+            return new GCM<AES>(isEncrypt);
+        case 4:
+            return new CBC<DES3>(isEncrypt);
+        }
+    }
+
+    bool CipherRelease(Cipher* p)
+    {
+        delete p;
+        return true;
+    }
+
+    bool CipherSetKeyAndInitialVector(Cipher* p, byte* pKey, int nKeyLength, byte* pIV, int nIVLength)
+    {
+        return p->setKeyAndIV(pKey, nKeyLength, pIV, nIVLength);
+    }
+
+    int CipherSkipBytes(Cipher* p, int nSkipBytesCount)
+    {
+        return p->skipBytes(nSkipBytesCount);
+    }
+
+    int CipherInjectBytes(Cipher* p, byte* pInjectBytes, int nOffset, int nInjectBytesCount)
+    {
+        return p->injectBytes(pInjectBytes, nOffset, nInjectBytesCount);
+    }
+
+    bool CipherSubmitInput(Cipher* p, byte* pInput, int nOffset, int nLength)
+    {
+        return p->submitInput(pInput, nOffset, nLength);
+    }
+
+    bool CipherEndInput(Cipher* p)
+    {
+        return p->endInput();
+    }
+
+    int CipherRetrieveOutput(Cipher* p, byte* pOutput, int nOffset, int nLength)
+    {
+        return p->retrieveOutput(pOutput, nOffset, nLength);
+    }
+
+    bool CipherReset(Cipher* p)
+    {
+        return p->reset();
+    }
+
+
 }

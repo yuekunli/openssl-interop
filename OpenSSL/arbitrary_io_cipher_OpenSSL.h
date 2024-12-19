@@ -44,7 +44,9 @@ namespace ARBITRARY_IO_CIPHER_OPENSSL {
         virtual int dealWithCopyWhenRetrieveOutput(byte* pOutput, int nOffset, int nLength, int nInject);
 
     public:
-        ~Cipher();
+        virtual ~Cipher(); // making this destructor virtual is super important. I create objects of derived classes, but cast pointer to a pointer to this base class,
+                            // when I delete the pointer, the pointer is recognized as a pointer to this base class, if this destructor is not virtual, the destructor
+                            // of the derived class is not called.
 
         int skipBytes(int _nBytesToBeSkipped);
         
